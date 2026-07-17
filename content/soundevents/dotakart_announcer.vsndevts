@@ -1,0 +1,174 @@
+// DotA Kart custom announcer and lap sounds - FIX44
+// Coloque os MP3 brutos em: content/dota_addons/dota_kart/sounds/
+// Depois faça Full Recompile deste arquivo no Asset Browser.
+
+"dotakart_announcer_place_01"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_01.vsnd" ]
+}
+
+"dotakart_announcer_place_02"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_02.vsnd" ]
+}
+
+"dotakart_announcer_place_03"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_03.vsnd" ]
+}
+
+"dotakart_announcer_place_04"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_04.vsnd" ]
+}
+
+"dotakart_announcer_place_05"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_05.vsnd" ]
+}
+
+"dotakart_announcer_place_06"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_06.vsnd" ]
+}
+
+"dotakart_announcer_place_07"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_07.vsnd" ]
+}
+
+"dotakart_announcer_place_08"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_08.vsnd" ]
+}
+
+// Efeitos temporarios de volta. Podem ser trocados depois por MP3 customizados.
+"dotakart_lap_complete"
+{
+    type = "dota_src1_2d"
+    volume = 0.80
+    pitch = 1.0
+    vsnd_files = [ "sounds/ui/treasure_01.vsnd" ]
+}
+
+"dotakart_final_lap"
+{
+    type = "dota_src1_2d"
+    volume = 0.90
+    pitch = 1.0
+    vsnd_files = [ "sounds/items/black_king_bar.vsnd" ]
+}
+
+// FIX51: start grid countdown aliases. Use these soundevents from Lua/Panorama instead of raw .vsnd paths.
+
+"dotakart_countdown_01"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_01.vsnd" ]
+}
+
+"dotakart_countdown_02"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_02.vsnd" ]
+}
+
+"dotakart_countdown_03"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_03.vsnd" ]
+}
+
+"dotakart_countdown_04"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_04.vsnd" ]
+}
+
+"dotakart_countdown_05"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_05.vsnd" ]
+}
+
+"dotakart_countdown_06"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_06.vsnd" ]
+}
+
+"dotakart_countdown_07"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_07.vsnd" ]
+}
+
+"dotakart_countdown_08"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_08.vsnd" ]
+}
+
+"dotakart_countdown_09"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_09.vsnd" ]
+}
+
+"dotakart_countdown_10"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_10.vsnd" ]
+}
+
+"dotakart_race_start"
+{
+    type = "dota_src1_2d"
+    volume = 1.0
+    pitch = 1.0
+    vsnd_files = [ "sounds/vo/announcer/announcer_battle_begin_01.vsnd" ]
+}

@@ -1,0 +1,70 @@
+<root>
+    <styles>
+        <include src="file://{resources}/styles/custom_game/dotakart_game_setup.css" />
+    </styles>
+    <scripts>
+        <include src="file://{resources}/scripts/custom_game/dotakart_game_setup.js" />
+    </scripts>
+
+    <!-- FIX63: root Panel do GameSetup NÃO pode ter id no compilador Panorama. Use $.GetContextPanel() no JS. -->
+    <Panel class="DKSetupRoot" hittest="true" hittestchildren="true">
+        <Panel id="DKSetupSettingsPanel" class="DKSetupPanel" hittest="true" hittestchildren="true">
+            <Panel class="DKSetupHeader" hittest="true" hittestchildren="true">
+                <Panel class="DKSetupHeaderTexts" hittest="false">
+                    <Label id="DKSetupTitle" text="#DOTA_KART_SETUP_TITLE" />
+                    <Label id="DKSetupSubtitle" text="#DOTA_KART_SETUP_SUBTITLE" />
+                </Panel>
+                <Button id="DKSetupCollapse" class="DKSetupCollapseButton" hittest="true" onactivate="DotaKartSetup_ToggleCollapse()"><Label id="DKSetupCollapseLabel" text="-" /></Button>
+            </Panel>
+
+            <Panel id="DKSetupBody" class="DKSetupBody" hittest="true" hittestchildren="true">
+                <Panel class="DKSetupSection" hittest="true" hittestchildren="true">
+                    <Label class="DKSetupSectionTitle" text="#DOTA_KART_SETUP_LAPS" />
+                    <Label id="DKSetupLapStatus" class="DKSetupStatus" text="#DOTA_KART_SETUP_LAPS_DEFAULT" />
+                    <Panel id="DKSetupLapButtons" class="DKSetupButtonRow" hittest="true" hittestchildren="true">
+                        <Button id="DKSetupLap2" class="DKSetupSmallButton" hittest="true" onactivate="DotaKartSetup_SetLaps2()"><Label id="DKSetupLap2Label" text="2" /></Button>
+                        <Button id="DKSetupLap3" class="DKSetupSmallButton DKSetupSelected" hittest="true" onactivate="DotaKartSetup_SetLaps3()"><Label id="DKSetupLap3Label" text="3" /></Button>
+                        <Button id="DKSetupLap4" class="DKSetupSmallButton" hittest="true" onactivate="DotaKartSetup_SetLaps4()"><Label id="DKSetupLap4Label" text="4" /></Button>
+                        <Button id="DKSetupLap5" class="DKSetupSmallButton" hittest="true" onactivate="DotaKartSetup_SetLaps5()"><Label id="DKSetupLap5Label" text="5" /></Button>
+                    </Panel>
+                </Panel>
+
+                <Panel class="DKSetupSection" hittest="true" hittestchildren="true">
+                    <Label class="DKSetupSectionTitle" text="#DOTA_KART_SETUP_COMPUTERS" />
+                    <Label id="DKSetupBotStatus" class="DKSetupStatus" text="#DOTA_KART_SETUP_BOTS_FILL" />
+                    <Button id="DKSetupBotFill" class="DKSetupWideButton DKSetupSelected" hittest="true" onactivate="DotaKartSetup_SetBotsFill()"><Label id="DKSetupBotFillLabel" text="#DOTA_KART_SETUP_BOTS_FILL_BUTTON" /></Button>
+                    <Panel id="DKSetupBotButtons" class="DKSetupBotGrid" hittest="true" hittestchildren="true">
+                        <Button id="DKSetupBot0" class="DKSetupTinyButton" hittest="true" onactivate="DotaKartSetup_SetBots0()"><Label id="DKSetupBot0Label" text="0" /></Button>
+                        <Button id="DKSetupBot1" class="DKSetupTinyButton" hittest="true" onactivate="DotaKartSetup_SetBots1()"><Label id="DKSetupBot1Label" text="1" /></Button>
+                        <Button id="DKSetupBot2" class="DKSetupTinyButton" hittest="true" onactivate="DotaKartSetup_SetBots2()"><Label id="DKSetupBot2Label" text="2" /></Button>
+                        <Button id="DKSetupBot3" class="DKSetupTinyButton" hittest="true" onactivate="DotaKartSetup_SetBots3()"><Label id="DKSetupBot3Label" text="3" /></Button>
+                        <Button id="DKSetupBot4" class="DKSetupTinyButton" hittest="true" onactivate="DotaKartSetup_SetBots4()"><Label id="DKSetupBot4Label" text="4" /></Button>
+                        <Button id="DKSetupBot5" class="DKSetupTinyButton" hittest="true" onactivate="DotaKartSetup_SetBots5()"><Label id="DKSetupBot5Label" text="5" /></Button>
+                        <Button id="DKSetupBot6" class="DKSetupTinyButton" hittest="true" onactivate="DotaKartSetup_SetBots6()"><Label id="DKSetupBot6Label" text="6" /></Button>
+                        <Button id="DKSetupBot7" class="DKSetupTinyButton" hittest="true" onactivate="DotaKartSetup_SetBots7()"><Label id="DKSetupBot7Label" text="7" /></Button>
+                    </Panel>
+                </Panel>
+
+                <Label id="DKSetupHostStatus" class="DKSetupHostStatus" text="#DOTA_KART_SETUP_STATUS_HOST_ONLY" />
+                <Label id="DKSetupHint" class="DKSetupHint" text="#DOTA_KART_SETUP_HINT" />
+            </Panel>
+        </Panel>
+
+        <Panel id="DKSetupTeamsPanel" class="DKSetupTeamsPanel" hittest="true" hittestchildren="true">
+            <Label class="DKSetupTeamsTitle" text="#DOTA_KART_SETUP_TEAMS_TITLE" />
+            <Label class="DKSetupTeamsSubtitle" text="#DOTA_KART_SETUP_TEAMS_SUBTITLE" />
+            <Panel id="DKSetupTeamsList" class="DKSetupTeamsList" hittest="true" hittestchildren="true" />
+            <Panel class="DKSetupTeamActions" hittest="true" hittestchildren="true">
+                <Button id="DKSetupRandomTeam" class="DKSetupActionButton" hittest="true" onactivate="DotaKartSetup_JoinRandomTeam()"><Label id="DKSetupRandomTeamLabel" text="#DOTA_KART_SETUP_RANDOM_SLOT" /></Button>
+                <Button id="DKSetupLeaveTeam" class="DKSetupActionButton" hittest="true" onactivate="DotaKartSetup_LeaveTeam()"><Label id="DKSetupLeaveTeamLabel" text="#DOTA_KART_SETUP_LEAVE_SLOT" /></Button>
+            </Panel>
+        </Panel>
+
+        <Panel id="DKSetupRightPanel" class="DKSetupRightPanel" hittest="true" hittestchildren="true">
+            <Label class="DKSetupTeamsTitle" text="#DOTA_KART_SETUP_PLAYERS_OUT" />
+            <Panel id="DKSetupPlayersOut" class="DKSetupPlayersOut" hittest="false" />
+            <Label id="DKSetupConfirmHint" class="DKSetupConfirmHint" text="#DOTA_KART_SETUP_CONFIRM_HINT" />
+            <Button id="DKSetupConfirm" class="DKSetupConfirmButton" hittest="true" onactivate="DotaKartSetup_Confirm()"><Label id="DKSetupConfirmLabel" text="#DOTA_KART_SETUP_CONFIRM" /></Button>
+        </Panel>
+    </Panel>
+</root>

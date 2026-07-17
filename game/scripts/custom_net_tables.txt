@@ -1,0 +1,6 @@
+"CustomNetTables"
+{
+    "dotakart_hud"
+    {
+    }
+}
