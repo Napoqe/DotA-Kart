@@ -1,0 +1,2 @@
+-- DotA Kart Public AI bot entity script
+-- FIX67: intentionally empty. The kart AI is controlled by dotakart/ai/public_ai.lua.

@@ -1,0 +1,7 @@
+<root>
+    <Panel>
+        <!-- Dota Kart HUD semelhante ao layout de kart clássico. -->
+        <CustomUIElement type="GameSetup" layoutfile="file://{resources}/layout/custom_game/dotakart_game_setup.xml" />
+        <CustomUIElement type="Hud" layoutfile="file://{resources}/layout/custom_game/hud.xml" />
+    </Panel>
+</root>

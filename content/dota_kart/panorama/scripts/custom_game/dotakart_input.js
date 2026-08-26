@@ -1,0 +1,265 @@
+(function () {
+    "use strict";
+
+    /*
+        DotA Kart - input client FIX16
+        ----------------------------------------------------
+        W = acelerar
+        S = freio / re
+        A = virar esquerda
+        D = virar direita
+        T = usar item
+
+        FIX16 importante:
+        O Dota/Panorama mantém ConCommands entre reloads do Workshop Tools.
+        Quando o mesmo nome é registrado de novo, aparece:
+            Cannot create ConCommand '+dotakart15_forward' - already exists
+        Aí o bind pode ficar apontando para callback antigo/morto e o herói para
+        de responder no segundo teste.
+
+        Solução: cada load cria nomes UNICOS de comando e rebinda W/S/A/D/T
+        para esses nomes. Assim nunca dependemos de callback antigo em cache.
+    */
+
+    var ENABLED = true;
+    var HEARTBEAT = 0.20;
+    var REBIND_INTERVAL = 1.0;
+    var REBIND_ATTEMPTS = 12;
+    var rebindCount = 0;
+
+    var RUN_ID = CreateRunID();
+    var CMD = {
+        forward: "dotakart16_" + RUN_ID + "_forward",
+        reverse: "dotakart16_" + RUN_ID + "_reverse",
+        left: "dotakart16_" + RUN_ID + "_left",
+        right: "dotakart16_" + RUN_ID + "_right",
+        item: "dotakart16_" + RUN_ID + "_item",
+        force_forward: "dotakart16_" + RUN_ID + "_force_forward",
+        release: "dotakart16_" + RUN_ID + "_release_all"
+    };
+
+    var input = {
+        forward: false,
+        reverse: false,
+        left: false,
+        right: false,
+        force_forward: false
+    };
+
+    var lastSent = "";
+    var lastSendTime = 0;
+    var debug = false;
+
+    function CreateRunID() {
+        var t = 0;
+        try {
+            if (typeof Game !== "undefined" && typeof Game.Time === "function") {
+                t = Math.floor(Game.Time() * 1000);
+            }
+        } catch (e) { }
+
+        var d = 0;
+        try {
+            d = (new Date()).getTime() % 1000000000;
+        } catch (e2) { }
+
+        var r = Math.floor(Math.random() * 1000000);
+        return String(d) + "_" + String(t) + "_" + String(r);
+    }
+
+    function Msg(text) {
+        $.Msg("[DotA Kart Input FIX16] " + text);
+    }
+
+    function IsFunction(owner, name) {
+        return owner && typeof owner[name] === "function";
+    }
+
+    function GetPlayerID() {
+        if (typeof Players !== "undefined" && IsFunction(Players, "GetLocalPlayer")) {
+            return Players.GetLocalPlayer();
+        }
+        return -1;
+    }
+
+    function InputSignature() {
+        return [
+            input.forward ? "1" : "0",
+            input.reverse ? "1" : "0",
+            input.left ? "1" : "0",
+            input.right ? "1" : "0",
+            input.force_forward ? "1" : "0"
+        ].join("");
+    }
+
+    function SendState(force) {
+        if (!ENABLED || typeof GameEvents === "undefined") return;
+
+        var now = IsFunction(Game, "Time") ? Game.Time() : 0;
+        var sig = InputSignature();
+
+        if (!force && sig === lastSent) {
+            if (sig === "0000") return;
+            if (now - lastSendTime < 0.25) return;
+        }
+
+        lastSent = sig;
+        lastSendTime = now;
+
+        var playerID = GetPlayerID();
+
+        GameEvents.SendCustomGameEventToServer("dotakart_input_state", {
+            PlayerID: playerID,
+            player_id: playerID,
+            playerID: playerID,
+            forward: input.forward ? 1 : 0,
+            reverse: input.reverse ? 1 : 0,
+            left: input.left ? 1 : 0,
+            right: input.right ? 1 : 0,
+            force_forward: input.force_forward ? 1 : 0
+        });
+
+        if (debug || sig !== "0000") {
+            Msg("send p" + playerID +
+                " W=" + (input.forward ? 1 : 0) +
+                " S=" + (input.reverse ? 1 : 0) +
+                " A=" + (input.left ? 1 : 0) +
+                " D=" + (input.right ? 1 : 0) +
+                " F=" + (input.force_forward ? 1 : 0));
+        }
+    }
+
+    function SetKey(name, down) {
+        if (!ENABLED) return;
+
+        down = !!down;
+        if (input[name] === down) return;
+
+        input[name] = down;
+        SendState(true);
+    }
+
+    function ReleaseAll() {
+        var changed = input.forward || input.reverse || input.left || input.right || input.force_forward;
+        input.forward = false;
+        input.reverse = false;
+        input.left = false;
+        input.right = false;
+        input.force_forward = false;
+        SendState(changed || true);
+    }
+
+    function UseItem() {
+        if (!ENABLED || typeof GameEvents === "undefined") return;
+        var playerID = GetPlayerID();
+        GameEvents.SendCustomGameEventToServer("dotakart_input_item", {
+            PlayerID: playerID,
+            player_id: playerID,
+            playerID: playerID,
+            force_forward: input.force_forward ? 1 : 0
+        });
+        Msg("item p" + playerID);
+    }
+
+    function AddCommand(name, callback) {
+        if (!IsFunction(Game, "AddCommand")) {
+            Msg("ERRO: Game.AddCommand nao existe neste contexto.");
+            return false;
+        }
+
+        try {
+            Game.AddCommand(name, callback, "", 0);
+            return true;
+        } catch (e) {
+            Msg("ERRO AddCommand " + name + ": " + e);
+            return false;
+        }
+    }
+
+    function BindKey(key, command) {
+        if (!IsFunction(Game, "CreateCustomKeyBind")) {
+            Msg("AVISO: Game.CreateCustomKeyBind nao existe. Use bind manual no console.");
+            return false;
+        }
+
+        try {
+            Game.CreateCustomKeyBind(key, command);
+            return true;
+        } catch (e) {
+            Msg("Falhou bind " + key + " -> " + command + ": " + e);
+            return false;
+        }
+    }
+
+    function RegisterCommands() {
+        AddCommand("+" + CMD.forward, function () { SetKey("forward", true); });
+        AddCommand("-" + CMD.forward, function () { SetKey("forward", false); });
+
+        AddCommand("+" + CMD.reverse, function () { SetKey("reverse", true); });
+        AddCommand("-" + CMD.reverse, function () { SetKey("reverse", false); });
+
+        AddCommand("+" + CMD.left, function () { SetKey("left", true); });
+        AddCommand("-" + CMD.left, function () { SetKey("left", false); });
+
+        AddCommand("+" + CMD.right, function () { SetKey("right", true); });
+        AddCommand("-" + CMD.right, function () { SetKey("right", false); });
+
+        AddCommand("+" + CMD.item, function () { UseItem(); });
+        AddCommand("-" + CMD.item, function () { });
+
+        AddCommand("+" + CMD.force_forward, function () { SetKey("force_forward", true); });
+        AddCommand("-" + CMD.force_forward, function () { SetKey("force_forward", false); });
+
+        AddCommand(CMD.release, function () { ReleaseAll(); });
+    }
+
+    function ApplyKeyBinds() {
+        BindKey("w", "+" + CMD.forward);
+        BindKey("s", "+" + CMD.reverse);
+        BindKey("a", "+" + CMD.left);
+        BindKey("d", "+" + CMD.right);
+        BindKey("t", "+" + CMD.item);
+        BindKey("f", "+" + CMD.force_forward);
+
+        BindKey("W", "+" + CMD.forward);
+        BindKey("S", "+" + CMD.reverse);
+        BindKey("A", "+" + CMD.left);
+        BindKey("D", "+" + CMD.right);
+        BindKey("T", "+" + CMD.item);
+        BindKey("F", "+" + CMD.force_forward);
+    }
+
+    function PrintManualBinds() {
+        Msg("Comandos desta sessao:");
+        Msg("bind w +" + CMD.forward);
+        Msg("bind s +" + CMD.reverse);
+        Msg("bind a +" + CMD.left);
+        Msg("bind d +" + CMD.right);
+        Msg("bind t +" + CMD.item);
+        Msg("bind f +" + CMD.force_forward + "  // segure F + aperte T para Spectral Dagger para frente");
+    }
+
+    function RebindThink() {
+        if (rebindCount >= REBIND_ATTEMPTS) return;
+        rebindCount++;
+        ApplyKeyBinds();
+        Msg("binds UNICOS W/S/A/D/T/F aplicados tentativa " + rebindCount + ". player=" + GetPlayerID() + " run=" + RUN_ID);
+        $.Schedule(REBIND_INTERVAL, RebindThink);
+    }
+
+    function Heartbeat() {
+        $.Schedule(HEARTBEAT, Heartbeat);
+        SendState(false);
+    }
+
+    function Init() {
+        RegisterCommands();
+        RebindThink();
+        ReleaseAll();
+        Heartbeat();
+        PrintManualBinds();
+        Msg("script carregado FIX16. Nomes de comando sao unicos para evitar cache do Panorama.");
+    }
+
+    Init();
+})();

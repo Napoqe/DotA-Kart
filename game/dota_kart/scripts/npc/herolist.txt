@@ -1,0 +1,11 @@
+"CustomHeroes"
+{
+    "npc_dota_hero_dotakart_invoker"      "1"
+    "npc_dota_hero_brewmaster"            "1"
+    "npc_dota_hero_tinker"                "1"
+    "npc_dota_hero_lina"                  "1"
+    "npc_dota_hero_pudge"                 "1"
+    "npc_dota_hero_tiny"                  "1"
+    "npc_dota_hero_mirana"                "1"
+    "npc_dota_hero_juggernaut"            "1"
+}

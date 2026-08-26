@@ -1,0 +1,531 @@
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc41:version{12fc9d44-453a-4ae4-b4d9-7e2ac0bbd4e0} -->
+{
+	rootNode = 
+	{
+		_class = "RootNode"
+		children = 
+		[
+			{
+				_class = "BoneMarkupList"
+				bone_cull_type = "None"
+				primary_root_bone = ""
+			},
+			{
+				_class = "RenderMeshList"
+				children = 
+				[
+					{
+						_class = "RenderMeshFile"
+						name = "unnamed_1"
+						filename = "models/props_gameplay/wooden_crate_01_unnamed_1.dmx"
+						import_scale = 1.0
+						import_filter = 
+						{
+							exclude_by_default = false
+							exception_list = [  ]
+						}
+					},
+				]
+			},
+			{
+				_class = "PhysicsShapeList"
+				children = 
+				[
+					{
+						_class = "PhysicsHullFile"
+						parent_bone = ""
+						surface_prop = "woodcrate"
+						collision_prop = "default"
+						tool_material = ""
+						recenter_on_parent_bone = false
+						offset_origin = [ 0.0, 0.0, 0.0 ]
+						offset_angles = [ 0.0, 0.0, 0.0 ]
+						filename = "models/props_gameplay/wooden_crate_01_hull.dmx"
+						import_scale = 1.0
+						faceMergeAngle = 10.0
+						maxHullVertices = 0
+						import_mode = "SingleHull"
+						small_element_threshold = 0.0
+						thin_element_threshold = 0.0
+						optimization_algorithm = "QEM"
+						disable_region_svm = false
+						import_filter = 
+						{
+							exclude_by_default = false
+							exception_list = [  ]
+						}
+					},
+				]
+				leave_body_collision_unmodified = false
+				body_order = "default"
+			},
+			{
+				_class = "GameDataList"
+				children = 
+				[
+					{
+						_class = "GenericGameData"
+						game_class = "prop_data"
+						game_keys = 
+						{
+							base = null
+							allowstatic = false
+							bakelighting = true
+							damage_table = ""
+							dmg.bullets = -1.0
+							dmg.club = -1.0
+							dmg.explosive = -1.0
+							dmg.fire = -1.0
+							health = 25.0
+							spawn_motion_disabled = false
+						}
+					},
+				]
+			},
+			{
+				_class = "BreakPieceList"
+				children = 
+				[
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 0.0, 0.0, 63.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_a.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 0.0, 0.0, 63.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_b.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 0.0, 0.0, 63.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_c.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 0.0, 0.0, 63.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_d.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 0.0, 0.0, 0.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_e.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 0.0, 0.0, 0.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_f.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ -32.0, 0.0, 32.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_g.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 0.0, 0.0, 2.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_h.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 32.0, 0.0, 32.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_i.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 32.0, 0.0, 32.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_j.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 0.0, 0.0, 0.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_k.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 0.0, 0.0, 0.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_l.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 0.0, 0.0, 0.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_m.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 0.0, 0.0, 0.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_n.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+					{
+						_class = "BreakPieceExternal"
+						placement_mode = "default"
+						placement_bone = ""
+						placement_attach = ""
+						sound_event_on_spawn = ""
+						spawn_entity = "prop_physics"
+						enable_collision_with_parent = false
+						ragdoll_applies_bind_pose_root = false
+						collision_group = "default"
+						offset = [ 0.0, 0.0, 0.0 ]
+						offset_rotation = [ 0.0, 0.0, 0.0 ]
+						fadetime = 2.0
+						fade_min_dist = 0.0
+						fade_max_dist = 0.0
+						name_mode = "none"
+						random_spawn_chance = 1.0
+						suppress_creation_on_death = false
+						is_essential_piece = false
+						can_player_pickup_piece = false
+						render_color_mode = "inherit_owner"
+						material_group_mode = "inherit_owner_index"
+						physics_joint_modification_type = "none"
+						specific_physics_body_to_replace = ""
+						massoverride = -1.0
+						model = "models/props_gameplay/wooden_crate_01/wooden_crate_01_piece_o.vmdl"
+						force_motion_disabled = false
+						health_override = -1
+					},
+				]
+			},
+		]
+		model_archetype = ""
+		primary_associated_entity = ""
+		document_sub_type = "ModelDocSubType_None"
+	}
+}

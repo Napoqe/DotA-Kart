@@ -1,0 +1,431 @@
+/* FIX62: GameSetup custom. Apenas classes DKSetup* e Button+Label para evitar falha de compile VXML. */
+.DKSetupRoot
+{
+    width: 100%;
+    height: 100%;
+    horizontal-align: left;
+    vertical-align: top;
+    background-color: #00000000;
+}
+
+.DKSetupPanel
+{
+    width: 344px;
+    min-height: 116px;
+    horizontal-align: left;
+    vertical-align: top;
+    margin-left: 42px;
+    margin-top: 76px;
+    padding: 12px;
+    flow-children: down;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#141b25ee), to(#07090eee));
+    border: 2px solid #dce8f1cc;
+    box-shadow: #000000cc 0px 0px 12px 0px;
+}
+
+.DKSetupHeader
+{
+    width: 100%;
+    flow-children: right;
+}
+
+.DKSetupHeaderTexts
+{
+    width: 282px;
+    flow-children: down;
+}
+
+#DKSetupTitle
+{
+    color: #ffffffff;
+    font-size: 28px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-shadow: 0px 2px 4px 4.0 #000000ff;
+}
+
+#DKSetupSubtitle
+{
+    margin-top: -2px;
+    color: #c8d9e8ff;
+    font-size: 14px;
+    letter-spacing: 1px;
+    text-shadow: 0px 1px 3px 3.0 #000000ff;
+}
+
+.DKSetupCollapseButton
+{
+    width: 30px;
+    height: 28px;
+    margin-left: 8px;
+    background-color: #2d3845dd;
+    border: 1px solid #9facbbaa;
+}
+
+.DKSetupCollapseButton Label,
+.DKSetupSmallButton Label,
+.DKSetupTinyButton Label,
+.DKSetupWideButton Label,
+.DKSetupJoinButton Label,
+.DKSetupActionButton Label,
+.DKSetupConfirmButton Label
+{
+    horizontal-align: center;
+    vertical-align: center;
+    color: #eaf1f8ff;
+    font-weight: bold;
+    text-shadow: 0px 1px 2px 2.0 #000000ff;
+}
+
+.DKSetupCollapseButton Label
+{
+    color: #ffffffff;
+    font-size: 22px;
+}
+
+.DKSetupCollapseButton:hover,
+.DKSetupSmallButton:hover,
+.DKSetupTinyButton:hover,
+.DKSetupWideButton:hover,
+.DKSetupJoinButton:hover,
+.DKSetupActionButton:hover,
+.DKSetupConfirmButton:hover
+{
+    brightness: 1.7;
+}
+
+.DKSetupBody
+{
+    width: 100%;
+    flow-children: down;
+}
+
+.DKSetupPanel.DKSetupCollapsed
+{
+    min-height: 54px;
+}
+
+.DKSetupPanel.DKSetupCollapsed #DKSetupBody
+{
+    visibility: collapse;
+}
+
+.DKSetupSection
+{
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    flow-children: down;
+    background-color: #26313dcc;
+    border: 1px solid #8492a3aa;
+}
+
+.DKSetupSectionTitle
+{
+    color: #f4cf69ff;
+    font-size: 17px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-shadow: 0px 1px 3px 3.0 #000000ff;
+}
+
+.DKSetupStatus
+{
+    margin-top: 2px;
+    color: #f1f7ffff;
+    font-size: 15px;
+    text-shadow: 0px 1px 2px 2.0 #000000ff;
+}
+
+.DKSetupButtonRow
+{
+    margin-top: 8px;
+    flow-children: right;
+    horizontal-align: center;
+}
+
+.DKSetupSmallButton
+{
+    width: 54px;
+    height: 38px;
+    margin-left: 4px;
+    margin-right: 4px;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#384554dd), to(#202833dd));
+    border: 2px solid #8794a6aa;
+}
+
+.DKSetupSmallButton Label
+{
+    font-size: 18px;
+}
+
+.DKSetupTinyButton
+{
+    width: 36px;
+    height: 32px;
+    margin: 3px;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#384554dd), to(#202833dd));
+    border: 2px solid #8794a6aa;
+}
+
+.DKSetupTinyButton Label
+{
+    font-size: 16px;
+}
+
+.DKSetupWideButton
+{
+    width: 100%;
+    height: 36px;
+    margin-top: 8px;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#384554dd), to(#202833dd));
+    border: 2px solid #8794a6aa;
+}
+
+.DKSetupWideButton Label
+{
+    font-size: 14px;
+    letter-spacing: 1px;
+}
+
+.DKSetupBotGrid
+{
+    margin-top: 7px;
+    flow-children: right-wrap;
+}
+
+.DKSetupSelected
+{
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#83520eff), to(#3b2306ff));
+    border: 2px solid #ffc84aff;
+}
+
+.DKSetupSelected Label
+{
+    color: #ffc84aff;
+}
+
+.DKSetupDisabled
+{
+    opacity: 0.28;
+}
+
+.DKSetupHostStatus
+{
+    margin-top: 12px;
+    horizontal-align: center;
+    color: #ffffffff;
+    font-size: 14px;
+    text-align: center;
+    text-shadow: 0px 1px 3px 3.0 #000000ff;
+}
+
+.DKSetupHint
+{
+    margin-top: 6px;
+    horizontal-align: center;
+    color: #b8c6d8ff;
+    font-size: 13px;
+    text-align: center;
+    text-shadow: 0px 1px 2px 2.0 #000000ff;
+}
+
+.DKSetupTeamsPanel
+{
+    width: 430px;
+    height: 720px;
+    horizontal-align: center;
+    vertical-align: top;
+    margin-top: 76px;
+    padding: 14px;
+    flow-children: down;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#101821e8), to(#06080ce8));
+    border: 2px solid #9facbbaa;
+    box-shadow: #000000cc 0px 0px 12px 0px;
+}
+
+.DKSetupRightPanel
+{
+    width: 316px;
+    height: 720px;
+    horizontal-align: right;
+    vertical-align: top;
+    margin-top: 76px;
+    margin-right: 40px;
+    padding: 14px;
+    flow-children: down;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#101821e8), to(#06080ce8));
+    border: 2px solid #000000dd;
+    box-shadow: #000000cc 0px 0px 12px 0px;
+}
+
+.DKSetupTeamsTitle
+{
+    color: #c8d9e8ff;
+    font-size: 19px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-shadow: 0px 1px 3px 3.0 #000000ff;
+}
+
+.DKSetupTeamsSubtitle
+{
+    margin-top: 2px;
+    color: #eef6ffff;
+    font-size: 13px;
+    text-shadow: 0px 1px 2px 2.0 #000000ff;
+}
+
+.DKSetupTeamsList
+{
+    width: 100%;
+    margin-top: 10px;
+    flow-children: down;
+}
+
+.DKSetupTeamRow
+{
+    width: 100%;
+    height: 62px;
+    margin-bottom: 8px;
+    flow-children: right;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#38434fcc), to(#1f2630cc));
+    border: 1px solid #606b78aa;
+}
+
+.DKSetupTeamRow.DKSetupLocalTeam
+{
+    border: 2px solid #9bd9ffff;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#42576aff), to(#202d3aff));
+}
+
+.DKSetupTeamInfo
+{
+    width: 286px;
+    height: 100%;
+    padding-left: 8px;
+    flow-children: down;
+    vertical-align: center;
+}
+
+.DKSetupTeamName
+{
+    color: #ffffffff;
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 0px 1px 2px 2.0 #000000ff;
+}
+
+.DKSetupPlayerName
+{
+    color: #cdd6e0ff;
+    font-size: 15px;
+    margin-top: 4px;
+    text-shadow: 0px 1px 2px 2.0 #000000ff;
+}
+
+.DKSetupEmptyName
+{
+    color: #8d98a6ff;
+    font-style: italic;
+}
+
+.DKSetupJoinButton
+{
+    width: 96px;
+    height: 34px;
+    margin-right: 8px;
+    vertical-align: center;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#4d6f95dd), to(#25364add));
+    border: 1px solid #b5d5ffff;
+}
+
+.DKSetupJoinButton Label
+{
+    font-size: 13px;
+}
+
+.DKSetupJoinButton.DKSetupOccupied
+{
+    opacity: 0.20;
+}
+
+.DKSetupTeamActions
+{
+    width: 100%;
+    margin-top: 6px;
+    flow-children: right;
+}
+
+.DKSetupActionButton
+{
+    width: 196px;
+    height: 38px;
+    margin-right: 8px;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#364250dd), to(#171f28dd));
+    border: 1px solid #8794a6aa;
+}
+
+.DKSetupActionButton Label
+{
+    font-size: 13px;
+}
+
+.DKSetupPlayersOut
+{
+    width: 100%;
+    height: 570px;
+    margin-top: 10px;
+    padding: 10px;
+    flow-children: down;
+    background-color: #2e3845cc;
+    border: 1px solid #606b78aa;
+}
+
+.DKSetupOutsidePlayer
+{
+    width: 100%;
+    color: #dfe8f1ff;
+    font-size: 15px;
+    margin-bottom: 5px;
+    text-shadow: 0px 1px 2px 2.0 #000000ff;
+}
+
+.DKSetupConfirmHint
+{
+    width: 100%;
+    margin-top: 10px;
+    color: #b8c6d8ff;
+    font-size: 13px;
+    text-align: center;
+    text-shadow: 0px 1px 2px 2.0 #000000ff;
+}
+
+.DKSetupConfirmButton
+{
+    width: 100%;
+    height: 54px;
+    margin-top: 10px;
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(#5e9eefff), to(#1e4f9cff));
+    border: 2px solid #9bd9ffff;
+}
+
+.DKSetupConfirmButton Label
+{
+    color: #ffffffff;
+    font-size: 24px;
+    letter-spacing: 2px;
+}
+
+.DKSetupNotHost .DKSetupSmallButton,
+.DKSetupNotHost .DKSetupTinyButton,
+.DKSetupNotHost .DKSetupWideButton,
+.DKSetupLocked .DKSetupSmallButton,
+.DKSetupLocked .DKSetupTinyButton,
+.DKSetupLocked .DKSetupWideButton,
+.DKSetupLocked .DKSetupJoinButton,
+.DKSetupLocked .DKSetupActionButton,
+.DKSetupLocked .DKSetupConfirmButton
+{
+    brightness: 0.55;
+}

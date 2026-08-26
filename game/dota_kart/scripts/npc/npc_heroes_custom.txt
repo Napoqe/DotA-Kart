@@ -1,0 +1,19 @@
+"DOTAHeroes"
+{
+    "Version" "1"
+
+    // FIX88: only Invoker uses a custom DotA Kart hero for now.
+    // Other pilots use the normal Dota heroes until their custom kart VMDLs are ready.
+    "npc_dota_hero_dotakart_invoker"
+    {
+        "override_hero"      "npc_dota_hero_invoker"
+        "Enabled"            "1"
+        "Model"              "models/invoker/invoker_kart.vmdl"
+        "ModelScale"         "2.0"
+        "LoadoutScale"       "2.0"
+        "DisableWearables"   "1"
+        "ItemSlots"
+        {
+        }
+    }
+}

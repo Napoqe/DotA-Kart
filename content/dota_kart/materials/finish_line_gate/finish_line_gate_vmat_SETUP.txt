@@ -1,0 +1,17 @@
+Material sugerido para criar manualmente no Material Editor:
+
+Arquivo recomendado:
+materials/finish_line_gate/finish_line_gate.vmat
+
+Shader:
+Global Lit Simple
+
+Texturas:
+Color / Albedo: finish_line_gate_color.png
+Normal: finish_line_gate_normal.png
+Roughness: finish_line_gate_roughness.png
+Metalness: finish_line_gate_metallic.png
+Emission / Self Illumination, se usar: finish_line_gate_emissive.png
+
+Nao renomeie este arquivo para .vmat automaticamente se voce nao souber os nomes corretos dos parametros do shader no seu Workshop Tools.
+O mais seguro e criar o VMAT pelo Material Editor.
