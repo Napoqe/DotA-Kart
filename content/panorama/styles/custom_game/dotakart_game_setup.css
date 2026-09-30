@@ -53,6 +53,21 @@
     text-shadow: 0px 1px 3px 3.0 #000000ff;
 }
 
+#DKSetupCountdown
+{
+    margin-top: 3px;
+    color: #f4cf69ff;
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-shadow: 0px 1px 3px 3.0 #000000ff;
+}
+
+#DKSetupCountdown.DKSetupCountdownUrgent
+{
+    color: #ff8c72ff;
+}
+
 .DKSetupCollapseButton
 {
     width: 30px;

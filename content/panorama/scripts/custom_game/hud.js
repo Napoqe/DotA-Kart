@@ -23,19 +23,19 @@
     var ITEM_META = {
         item_phase_boots: {
             type: "custom",
-            icon: "s2r://materials/items/nitro/nitro_1.vmat",
+            icon: "nitro_1",
             label: "1 Nitro",
             desc: "Um Nitro forte e curto."
         },
         item_yasha: {
             type: "custom",
-            icon: "s2r://materials/items/nitro/nitro_2.vmat",
+            icon: "nitro_2",
             label: "2 Nitros",
             desc: "Duas cargas de Nitro. Cada uso atualiza o icone."
         },
         item_mask_of_madness: {
             type: "custom",
-            icon: "s2r://materials/items/nitro/nitro_3.vmat",
+            icon: "nitro_3",
             label: "3 Nitros",
             desc: "Tres cargas de Nitro: 3, 2, 1."
         },
@@ -140,6 +140,63 @@
             icon: "invoker_ice_wall",
             label: "Ice Wall",
             desc: "Deixa rastro de gelo por 5s. Rivais em contato recebem 60% slow."
+        },
+        item_dotakart_burrowstrike: {
+            type: "ability",
+            icon: "sandking_burrowstrike",
+            label: "Burrowstrike",
+            desc: "Spikes em linha; teleporta no fim, mantém velocidade e atordoa rivais."
+        },
+        item_dotakart_natures_grasp: {
+            type: "ability",
+            icon: "treant_natures_grasp",
+            label: "Nature's Grasp",
+            desc: "Cria uma linha de vinhas que aplicam root em karts adversários."
+        },
+        item_dotakart_bloodlust: {
+            type: "ability",
+            icon: "ogre_magi_bloodlust",
+            label: "Bloodlust",
+            desc: "Aumenta velocidade e tamanho do kart por 15s, com chance de Multicast."
+        },
+        item_dotakart_unstable_concoction: {
+            type: "ability",
+            icon: "alchemist_unstable_concoction",
+            label: "Unstable Concoction",
+            desc: "Prepara mistura instável; use de novo para arremessar antes de explodir."
+        },
+        item_dotakart_unstable_concoction_throw: {
+            type: "ability",
+            icon: "alchemist_unstable_concoction_throw",
+            label: "Concoction Throw",
+            desc: "Arremessa a mistura preparada."
+        },
+        item_dotakart_spectral_dagger: {
+            type: "ability",
+            icon: "spectre_spectral_dagger",
+            label: "Spectral Dagger",
+            desc: "Adaga teleguiada que cria Shadow Path; inimigos no caminho recebem slow."
+        },
+        item_dotakart_battle_hunger: {
+            type: "ability",
+            icon: "axe_battle_hunger",
+            label: "Battle Hunger",
+            desc: "+10% velocidade em você e -10% no rival 1 posição à frente por 15s. S+T mira atrás; acertar outro kart com item quebra o efeito."
+        },
+        item_dotakart_x_marks: {
+            type: "ability",
+            icon: "kunkka_x_marks_the_spot",
+            label: "X Marks the Spot",
+            desc: "Projétil range 2000; marca por 5s e retorna o kart ao X. S+T lança para trás."
+        },
+        item_dotakart_doppelwalk: { type: "ability", icon: "phantom_lancer_doppelwalk", label: "Doppelwalk", desc: "8s invisibility, +10% max speed and a moving decoy that can fool homing items." },
+        item_dotakart_shukuchi: { type: "ability", icon: "weaver_shukuchi", label: "Shukuchi", desc: "Disjoints homing items, becomes invisible/phased and gains 1.5x max speed for 4s; stuns racers passed through." },
+        item_dotakart_crystal_clone: { type: "ability", icon: "crystal_maiden_crystal_clone", label: "Crystal Clone", desc: "Places a 90s Crystal Maiden clone that explodes on kart/projectile contact and Frostbites nearby racers." },
+        item_dotakart_torrent_storm: {
+            type: "ability",
+            icon: "kunkka_torrent",
+            label: "Torrent Storm",
+            desc: "Cria um Torrent a cada 0.25s por 5s ao redor do kart; cada um avisa 1.6s antes de lançar inimigos ao ar e aplicar 40% slow."
         }
     };
 
@@ -157,41 +214,42 @@
         return Math.max(minValue, Math.min(maxValue, value));
     }
 
+    var DOTA_KART_NITRO_ICON_FILES = {
+        // FIX106: usar o PNG original em content/materials; o Source 2 Resource
+        // resolve para o VTEX compilado em game/materials/items/nitro.
+        // Não usar *_png.vtex_c nem hash compilado direto no Panorama.
+        nitro_1: "s2r://materials/items/nitro/1Nitro.png",
+        nitro_2: "s2r://materials/items/nitro/2Nitro.png",
+        nitro_3: "s2r://materials/items/nitro/3Nitro.png"
+    };
+
+    function ResolveCustomImagePath(icon) {
+        icon = String(icon || "");
+
+        if (icon === "nitro_1" || icon.indexOf("nitro_1") !== -1 || icon.indexOf("1nitro") !== -1) return DOTA_KART_NITRO_ICON_FILES.nitro_1;
+        if (icon === "nitro_2" || icon.indexOf("nitro_2") !== -1 || icon.indexOf("2nitro") !== -1) return DOTA_KART_NITRO_ICON_FILES.nitro_2;
+        if (icon === "nitro_3" || icon.indexOf("nitro_3") !== -1 || icon.indexOf("3nitro") !== -1) return DOTA_KART_NITRO_ICON_FILES.nitro_3;
+
+        return icon;
+    }
+
     function SetCustomImageSafe(panel, icon) {
         if (!panel) return;
-        icon = String(icon || "");
-        var candidates = [];
-        function add(v) {
-            if (!v) return;
-            for (var i = 0; i < candidates.length; i++) if (candidates[i] === v) return;
-            candidates.push(v);
-        }
+        icon = ResolveCustomImagePath(icon);
 
-        add(icon);
-        if (icon.indexOf("s2r://materials/") === 0) {
-            add(icon.replace("s2r://materials/", "file://{resources}/materials/"));
-            add(icon.replace("s2r://materials/", "file://{materials}/"));
-            add(icon.replace("s2r://materials/", "file://{images}/../materials/"));
-        }
+        try { if (panel.SetImage) panel.SetImage(icon); } catch (e1) {}
+        try { panel.src = icon; } catch (e2) {}
+        try { panel.style.backgroundImage = 'url("' + icon + '")'; } catch (e3) {}
+        try { panel.style.backgroundSize = "100% 100%"; } catch (e4) {}
+    }
 
-        // FIX55: fallback para os arquivos PNG do nitro.zip, caso o VMAT não seja aceito pelo ImagePanel.
-        if (icon.indexOf("nitro_1") !== -1) {
-            add("file://{images}/custom_game/items/nitro_1.png");
-            add("file://{resources}/images/custom_game/items/nitro_1.png");
-        }
-        if (icon.indexOf("nitro_2") !== -1) {
-            add("file://{images}/custom_game/items/nitro_2.png");
-            add("file://{resources}/images/custom_game/items/nitro_2.png");
-        }
-        if (icon.indexOf("nitro_3") !== -1) {
-            add("file://{images}/custom_game/items/nitro_3.png");
-            add("file://{resources}/images/custom_game/items/nitro_3.png");
-        }
-
-        for (var c = 0; c < candidates.length; c++) {
-            try { if (panel.SetImage) panel.SetImage(candidates[c]); } catch (e1) {}
-            try { panel.src = candidates[c]; } catch (e2) {}
-        }
+    function GetHeroIconName(heroName) {
+        heroName = String(heroName || "");
+        // FIX105: DOTAHeroImage não conhece o herói custom npc_dota_hero_dotakart_invoker;
+        // usar o retrato padrão do Invoker no placar em tempo real, minimapa e finish screen.
+        if (heroName === "npc_dota_hero_dotakart_invoker") return "npc_dota_hero_invoker";
+        if (heroName === "dotakart_invoker") return "npc_dota_hero_invoker";
+        return heroName || "npc_dota_hero_wisp";
     }
 
     function FormatRaceTime(totalMs) {
@@ -362,7 +420,9 @@
 
         var portrait = $.CreatePanel("DOTAHeroImage", row, "DKRacerPortrait" + index);
         portrait.AddClass("DKRacerPortrait");
-        portrait.heroname = racer.hero || racer.hero_name || "npc_dota_hero_wisp";
+        portrait.heroname = GetHeroIconName(racer.hero || racer.hero_name || "npc_dota_hero_wisp");
+        // Use the wide Dota-style hero portrait shape for the left standings HUD.
+        portrait.heroimagestyle = "landscape";
     }
 
     function UpdateStandings(racers) {
@@ -541,7 +601,7 @@
 
             var portrait = $.CreatePanel("DOTAHeroImage", marker, "DKMiniRacerIcon" + String(playerID) + "_" + String(i));
             portrait.AddClass("DKMiniRacerIcon");
-            portrait.heroname = racer.hero || racer.hero_name || "npc_dota_hero_wisp";
+            portrait.heroname = GetHeroIconName(racer.hero || racer.hero_name || "npc_dota_hero_wisp");
 
             var placeLabel = $.CreatePanel("Label", marker, "DKMiniRacerPlace" + String(playerID) + "_" + String(i));
             placeLabel.AddClass("DKMiniRacerPlace");
@@ -582,7 +642,11 @@
                     lastAnnouncedFinishPlace = place;
                     var two = place < 10 ? ("0" + place) : String(place);
                     var eventName = "dotakart_announcer_place_" + two;
+                    var aliasName = "vo_announcer_ann_custom_place_" + two;
                     try { Game.EmitSound(eventName); } catch (e0) {}
+                    try { $.DispatchEvent("PlaySoundEffect", eventName); } catch (e1) {}
+                    try { Game.EmitSound(aliasName); } catch (e2) {}
+                    try { $.DispatchEvent("PlaySoundEffect", aliasName); } catch (e3) {}
                 }
                 return;
             }
@@ -631,7 +695,7 @@
 
             var icon = $.CreatePanel("DOTAHeroImage", row, "DKFinishHeroIcon" + i);
             icon.AddClass("DKFinishHeroIcon");
-            icon.heroname = r.hero || r.hero_name || "npc_dota_hero_wisp";
+            icon.heroname = GetHeroIconName(r.hero || r.hero_name || "npc_dota_hero_wisp");
 
             var name = $.CreatePanel("Label", row, "DKFinishName" + i);
             name.AddClass("DKFinishName");
@@ -807,14 +871,25 @@
         "item_spell_steal",
         "item_basher",
         "item_glimmer_cape",
-        "item_kaya"
+        "item_kaya",
+        "item_dotakart_burrowstrike",
+        "item_dotakart_natures_grasp",
+        "item_dotakart_bloodlust",
+        "item_dotakart_unstable_concoction",
+        "item_dotakart_spectral_dagger",
+        "item_dotakart_battle_hunger",
+        "item_dotakart_x_marks",
+        "item_dotakart_doppelwalk",
+        "item_dotakart_shukuchi",
+        "item_dotakart_crystal_clone",
+        "item_dotakart_torrent_storm"
     ];
 
     // ITEM_META do primeiro bloco é local àquele escopo; duplicamos o mínimo aqui para a roleta visual.
     var ROULETTE_ITEM_META = {
-        item_phase_boots: { type: "custom", icon: "s2r://materials/items/nitro/nitro_1.vmat", label: "1 Nitro" },
-        item_yasha: { type: "custom", icon: "s2r://materials/items/nitro/nitro_2.vmat", label: "2 Nitros" },
-        item_mask_of_madness: { type: "custom", icon: "s2r://materials/items/nitro/nitro_3.vmat", label: "3 Nitros" },
+        item_phase_boots: { type: "custom", icon: "nitro_1", label: "1 Nitro" },
+        item_yasha: { type: "custom", icon: "nitro_2", label: "2 Nitros" },
+        item_mask_of_madness: { type: "custom", icon: "nitro_3", label: "3 Nitros" },
         item_black_king_bar: { type: "item", icon: "item_black_king_bar", label: "Estrelinha" },
         item_force_staff: { type: "ability", icon: "pudge_meat_hook", label: "Meat Hook" },
         item_blink: { type: "ability", icon: "rattletrap_hookshot", label: "Hookshot" },
@@ -831,7 +906,19 @@
         item_spell_steal: { type: "ability", icon: "rubick_spell_steal", label: "Item Steal" },
         item_basher: { type: "ability", icon: "chaos_knight_chaos_bolt", label: "Chaos Bolt" },
         item_glimmer_cape: { type: "ability", icon: "bounty_hunter_wind_walk", label: "Invisibility" },
-        item_kaya: { type: "ability", icon: "invoker_ice_wall", label: "Ice Wall" }
+        item_kaya: { type: "ability", icon: "invoker_ice_wall", label: "Ice Wall" },
+        item_dotakart_burrowstrike: { type: "ability", icon: "sandking_burrowstrike", label: "Burrowstrike" },
+        item_dotakart_natures_grasp: { type: "ability", icon: "treant_natures_grasp", label: "Nature's Grasp" },
+        item_dotakart_bloodlust: { type: "ability", icon: "ogre_magi_bloodlust", label: "Bloodlust" },
+        item_dotakart_unstable_concoction: { type: "ability", icon: "alchemist_unstable_concoction", label: "Unstable Concoction" },
+        item_dotakart_unstable_concoction_throw: { type: "ability", icon: "alchemist_unstable_concoction_throw", label: "Concoction Throw" },
+        item_dotakart_spectral_dagger: { type: "ability", icon: "spectre_spectral_dagger", label: "Spectral Dagger" },
+        item_dotakart_battle_hunger: { type: "ability", icon: "axe_battle_hunger", label: "Battle Hunger" },
+        item_dotakart_x_marks: { type: "ability", icon: "kunkka_x_marks_the_spot", label: "X Marks the Spot" },
+        item_dotakart_doppelwalk: { type: "ability", icon: "phantom_lancer_doppelwalk", label: "Doppelwalk" },
+        item_dotakart_shukuchi: { type: "ability", icon: "weaver_shukuchi", label: "Shukuchi" },
+        item_dotakart_crystal_clone: { type: "ability", icon: "crystal_maiden_crystal_clone", label: "Crystal Clone" },
+        item_dotakart_torrent_storm: { type: "ability", icon: "kunkka_torrent", label: "Torrent Storm" }
     };
 
     function UniquePush(arr, v) {
@@ -855,9 +942,20 @@
         UniquePush(aliases, noExt.replace(/^sounds\//i, "").replace(/\//g, "_"));
         UniquePush(aliases, noExt.split("/").pop());
 
-        // FIX44: soundevents customizados do DotA Kart.
+        // FIX102: soundevents customizados do DotA Kart + raw .vsnd lower-case, sem _c.
         if (sound.indexOf("dotakart_announcer_place_") !== -1) {
             UniquePush(aliases, sound);
+            var mPlace = sound.match(/dotakart_announcer_place_(\d+)/);
+            if (mPlace && mPlace[1]) {
+                var p2 = mPlace[1];
+                if (p2.length === 1) p2 = "0" + p2;
+                UniquePush(aliases, "sounds/vo_announcer_ann_custom_place_" + p2 + ".vsnd");
+                UniquePush(aliases, "vo_announcer_ann_custom_place_" + p2);
+            }
+        }
+        if (sound.indexOf("engine_idle") !== -1 || sound.indexOf("dotakart_engine_idle") !== -1) {
+            UniquePush(aliases, "sounds/dotakart/kart engine/engine_idle.vsnd");
+            UniquePush(aliases, "dotakart_engine_idle");
         }
         if (sound.indexOf("dotakart_lap_complete") !== -1) {
             UniquePush(aliases, "dotakart_lap_complete");
@@ -868,6 +966,14 @@
             UniquePush(aliases, "sounds/items/black_king_bar.vsnd");
         }
 
+        if (sound.indexOf("dotakart_itembox_spin_loop") !== -1) {
+            UniquePush(aliases, "dotakart_itembox_spin_loop");
+            UniquePush(aliases, "sounds/rylais_wheel_spin_02_lp.vsnd");
+        }
+        if (sound.indexOf("dotakart_itembox_crate_break") !== -1) {
+            UniquePush(aliases, "dotakart_itembox_crate_break");
+            UniquePush(aliases, "sounds/wood_crate_break_03.vsnd");
+        }
         if (sound.indexOf("rylais_wheel_spin_02_lp") !== -1 || sound.indexOf("rylais_wheel_spin_01_lp") !== -1) {
             UniquePush(aliases, "ui.economy.rylais_wheel_spin_02_lp");
             UniquePush(aliases, "economy.rylais_wheel_spin_02_lp");
@@ -896,6 +1002,37 @@
             UniquePush(aliases, "mirana.leap2");
             UniquePush(aliases, "mirana.leap3");
             UniquePush(aliases, "mirana.leap4");
+        }
+
+        if (sound.indexOf("burrow") !== -1 || sound.indexOf("sand_king") !== -1 || sound.indexOf("SandKing") !== -1 || sound.indexOf("Sandking") !== -1) {
+            UniquePush(aliases, "dotakart_burrowstrike_cast");
+            UniquePush(aliases, "Hero_SandKing.BurrowStrike");
+            UniquePush(aliases, "Hero_Sandking.BurrowStrike");
+            UniquePush(aliases, "Hero_SandKing.BurrowStrike.Target");
+            UniquePush(aliases, "Hero_Sandking.BurrowStrike.Target");
+            UniquePush(aliases, "Ability.SandKing_BurrowStrike");
+            UniquePush(aliases, "sounds/weapons/hero/sand_king/sand_king_burrow_attack.vsnd");
+            UniquePush(aliases, "sand_king_burrow_attack");
+        }
+
+        // FIX93: Spectral Dagger UI fallback aliases. Primeiro tenta os .vsnd nativos
+        // confirmados no Asset Browser, depois aliases/soundevents.
+        if (sound.indexOf("spectre") !== -1 || sound.indexOf("Spectre") !== -1 || sound.indexOf("spectral_dagger") !== -1 || sound.indexOf("spectraldagger") !== -1 || sound.indexOf("dagger_cast") !== -1 || sound.indexOf("dagger_impact") !== -1) {
+            UniquePush(aliases, "sounds/weapons/hero/spectre/dagger_cast.vsnd");
+            UniquePush(aliases, "sounds/weapons/hero/spectre/dagger_impact.vsnd");
+            UniquePush(aliases, "weapons.hero.spectre.dagger_cast");
+            UniquePush(aliases, "weapons.hero.spectre.dagger_impact");
+            UniquePush(aliases, "dagger_cast");
+            UniquePush(aliases, "dagger_impact");
+            UniquePush(aliases, "dotakart_spectral_dagger_cast_2d");
+            UniquePush(aliases, "dotakart_spectral_dagger_impact_2d");
+            UniquePush(aliases, "dotakart_spectral_dagger_cast");
+            UniquePush(aliases, "dotakart_spectral_dagger_impact");
+            UniquePush(aliases, "Hero_Spectre.DaggerCast");
+            UniquePush(aliases, "Hero_Spectre.DaggerImpact");
+            UniquePush(aliases, "Hero_Spectre.SpectralDagger");
+            UniquePush(aliases, "Hero_Spectre.SpectralDagger.Cast");
+            UniquePush(aliases, "Hero_Spectre.SpectralDagger.Impact");
         }
 
         if (sound.indexOf("treasure_01") !== -1) {
@@ -930,6 +1067,14 @@
             UniquePush(aliases, "Hero_Lich.ChainFrost.Target");
         }
 
+        if (sound.indexOf("alchemist") !== -1 || sound.indexOf("Concoction") !== -1 || sound.indexOf("concoction") !== -1) {
+            UniquePush(aliases, "dotakart_unstable_concoction_fuse");
+            UniquePush(aliases, "dotakart_unstable_concoction_throw");
+            UniquePush(aliases, "dotakart_unstable_concoction_stun");
+            UniquePush(aliases, "sounds/weapons/hero/alchemist/unstable_concoction_fuse.vsnd");
+            UniquePush(aliases, "sounds/weapons/hero/alchemist/unstable_concoction_throw.vsnd");
+            UniquePush(aliases, "sounds/weapons/hero/alchemist/unstable_concoction_stun01.vsnd");
+        }
         return aliases;
     }
 
@@ -976,11 +1121,15 @@
     }
 
     function StartRouletteSpinSound(spinSound) {
-        rouletteSpinSound = spinSound || "sounds/ui/economy/rylais_wheel_spin_01_lp.vsnd";
-        // FIX56: toca o loop de spin uma vez. Antes o .vsnd loop era emitido em pulsos repetidos,
-        // podendo empilhar/bugar o som. StopSoundMany é seguro porque só usa handles numéricos no Game.StopSound.
+        rouletteSpinSound = spinSound || "dotakart_itembox_spin_loop";
+        // FIX112: o novo spin é um soundevent custom. Toca somente o evento canônico para
+        // não duplicar áudio tocando simultaneamente o evento e o raw .vsnd fallback.
         StopSoundMany(rouletteSpinSound);
-        PlaySoundMany(rouletteSpinSound);
+        if (rouletteSpinSound === "dotakart_itembox_spin_loop") {
+            TryEmit(rouletteSpinSound);
+        } else {
+            PlaySoundMany(rouletteSpinSound);
+        }
     }
 
     function StopRouletteSpinSound() {
@@ -1075,7 +1224,7 @@
         if (!duration || duration <= 0) duration = 2.5;
         var start = (Game && Game.GetGameTime) ? Game.GetGameTime() : (Date.now() / 1000.0);
         var step = 0;
-        var spinSound = (data && data.spin_sound) || "sounds/ui/economy/rylais_wheel_spin_01_lp.vsnd";
+        var spinSound = (data && data.spin_sound) || "dotakart_itembox_spin_loop";
 
         // FIX56: restaura o spin antigo 01_lp sem empilhar vários loops ao longo dos 2.5s.
         StartRouletteSpinSound(spinSound);
@@ -1262,8 +1411,102 @@
         updatePosition();
     }
 
+    function ShowMulticastText(data) {
+        data = data || {};
+        var root = Find("#DKFloatingTextRoot");
+        if (!root) return;
+
+        var ent = Number(data.entindex || -1);
+        var dur = Math.max(0.75, Number(data.duration || 1.8));
+        var start = (Game && Game.GetGameTime) ? Game.GetGameTime() : (Date.now() / 1000.0);
+        var label = null;
+
+        function ensureLabel() {
+            if (label && label.IsValid && label.IsValid()) return label;
+            label = $.CreatePanel("Label", root, "DKMulticastText_" + String(Date.now()));
+            label.AddClass("DKMulticastText");
+            label.text = String(data.text || "MULTICAST!") + (data.subtext ? "\n" + String(data.subtext) : "");
+            label.visible = false;
+            return label;
+        }
+
+        function updatePosition() {
+            var now = (Game && Game.GetGameTime) ? Game.GetGameTime() : (Date.now() / 1000.0);
+            if (now - start >= dur) {
+                if (label && label.DeleteAsync) label.DeleteAsync(0.0);
+                return;
+            }
+
+            var p = GetChaosWorldPos(data);
+            var screen = WorldToScreenStrict(p, root);
+            var visible = screen !== null && IsEntityVisibleToLocalPlayer(ent);
+
+            if (visible) {
+                var l = ensureLabel();
+                var rise = Math.floor((now - start) * 22);
+                l.visible = true;
+                l.style.visibility = "visible";
+                l.style.position = String(Math.floor(screen.x - 150)) + "px " + String(Math.floor(screen.y - 120 - rise)) + "px 0px";
+            } else if (label && label.IsValid && label.IsValid()) {
+                label.visible = false;
+                label.style.visibility = "collapse";
+            }
+
+            $.Schedule(0.03, updatePosition);
+        }
+
+        updatePosition();
+    }
+
+    var concoctionLabels = {};
+    function ShowConcoctionTimer(data) {
+        data = data || {};
+        var root = Find("#DKFloatingTextRoot");
+        if (!root) return;
+        var ent = Number(data.entindex || -1);
+        if (ent < 0) return;
+        var key = "ent" + String(ent);
+        var label = concoctionLabels[key];
+        if (!label || !(label.IsValid && label.IsValid())) {
+            label = $.CreatePanel("Label", root, "DKConcoctionTimer_" + key);
+            label.AddClass("DKConcoctionTimerText");
+            concoctionLabels[key] = label;
+        }
+        var rem = Math.max(0, Number(data.remaining || 0));
+        label.text = String(data.text || rem.toFixed(1));
+        label.visible = true;
+        label.style.visibility = "visible";
+        var dur = Math.max(0.12, Number(data.duration || 0.30));
+        var start = (Game && Game.GetGameTime) ? Game.GetGameTime() : (Date.now() / 1000.0);
+        function updatePosition() {
+            var now = (Game && Game.GetGameTime) ? Game.GetGameTime() : (Date.now() / 1000.0);
+            if (now - start >= dur || rem <= 0) {
+                if (label && label.IsValid && label.IsValid()) {
+                    label.visible = false;
+                    label.style.visibility = "collapse";
+                }
+                return;
+            }
+            var p = GetChaosWorldPos(data);
+            var screen = WorldToScreenStrict(p, root);
+            var visible = screen !== null && IsEntityVisibleToLocalPlayer(ent);
+            if (visible) {
+                label.visible = true;
+                label.style.visibility = "visible";
+                label.style.position = String(Math.floor(screen.x - 70)) + "px " + String(Math.floor(screen.y - 118)) + "px 0px";
+            } else {
+                label.visible = false;
+                label.style.visibility = "collapse";
+            }
+            $.Schedule(0.03, updatePosition);
+        }
+        updatePosition();
+    }
+
     if (typeof GameEvents !== "undefined") {
         GameEvents.Subscribe("dotakart_chaos_stun_text", ShowChaosStunText);
+        GameEvents.Subscribe("dotakart_multicast_text", ShowMulticastText);
+        GameEvents.Subscribe("dotakart_concoction_timer", ShowConcoctionTimer);
     }
 })();
 

@@ -224,9 +224,9 @@
 
 #DKStandings
 {
-    width: 112px;
+    width: 136px;
     height: fit-children;
-    margin-left: 20px;
+    margin-left: 10px;
     margin-top: 128px;
     flow-children: down;
     vertical-align: top;
@@ -235,8 +235,8 @@
 
 .DKRacerRow
 {
-    width: 104px;
-    height: 60px;
+    width: 126px;
+    height: 52px;
     margin-bottom: 6px;
     background-color: gradient(linear, 0% 0%, 100% 0%, from(#000000ee), to(#222222bb));
     border: 2px solid #3b3b3b;
@@ -251,10 +251,10 @@
 
 .DKRacerPlace
 {
-    width: 28px;
+    width: 26px;
     height: 100%;
     color: #ffffff;
-    font-size: 34px;
+    font-size: 32px;
     font-weight: bold;
     text-shadow: 3px 3px 0px #000000;
     vertical-align: center;
@@ -264,42 +264,43 @@
 
 .DKRacerPortrait
 {
-    width: 62px;
-    height: 52px;
-    margin-left: 34px;
+    width: 92px;
+    height: 44px;
+    margin-left: 30px;
     vertical-align: center;
     border: 1px solid #000000;
 }
 
 #DKPlaceBox
 {
-    width: 250px;
+    width: fit-children;
     height: 120px;
     horizontal-align: left;
     vertical-align: bottom;
     margin-left: 28px;
     margin-bottom: 18px;
+    flow-children: right;
 }
 
 #DKPlaceNumber
 {
+    width: fit-children;
     color: #ffba2f;
     font-size: 112px;
     font-weight: bold;
     text-shadow: 6px 6px 0px #000000;
-    horizontal-align: left;
     vertical-align: bottom;
 }
 
 #DKPlaceSuffix
 {
+    width: fit-children;
     color: #ffba2f;
     font-size: 52px;
     font-weight: bold;
     text-shadow: 4px 4px 0px #000000;
-    horizontal-align: left;
     vertical-align: bottom;
-    margin-left: 120px;
+    margin-left: 4px;
     margin-bottom: 20px;
 }
 
@@ -455,15 +456,15 @@
 
 #DKFinishPanel
 {
-    width: 860px;
-    min-height: 610px;
+    width: 930px;
+    min-height: 660px;
     max-height: 88%;
     horizontal-align: center;
     vertical-align: center;
     background-color: #101014ef;
     border: 2px solid #d9b84aff;
     box-shadow: #000000ff 0px 0px 24px 2px;
-    padding: 24px;
+    padding: 30px;
     flow-children: down;
 }
 
@@ -471,7 +472,7 @@
 {
     horizontal-align: center;
     color: #ffe27aff;
-    font-size: 46px;
+    font-size: 52px;
     font-weight: bold;
     text-shadow: 3px 3px 0px #000000ff;
     margin-bottom: 2px;
@@ -481,8 +482,8 @@
 {
     horizontal-align: center;
     color: #d8d8d8ff;
-    font-size: 18px;
-    margin-bottom: 16px;
+    font-size: 21px;
+    margin-bottom: 20px;
 }
 
 #DKFinishRows
@@ -494,8 +495,8 @@
 .DKFinishRow
 {
     width: 100%;
-    height: 52px;
-    margin-bottom: 7px;
+    height: 60px;
+    margin-bottom: 8px;
     background-color: #24242add;
     border: 1px solid #000000ff;
     flow-children: right;
@@ -503,10 +504,10 @@
 
 .DKFinishPlace
 {
-    width: 62px;
+    width: 70px;
     height: 100%;
     color: #ffe27aff;
-    font-size: 26px;
+    font-size: 30px;
     font-weight: bold;
     text-align: center;
     vertical-align: center;
@@ -515,19 +516,19 @@
 
 .DKFinishHeroIcon
 {
-    width: 46px;
+    width: 74px;
     height: 46px;
     vertical-align: center;
-    margin-left: 6px;
-    margin-right: 10px;
+    margin-left: 8px;
+    margin-right: 14px;
 }
 
 .DKFinishName
 {
-    width: 480px;
+    width: 520px;
     height: 100%;
     color: #ffffffff;
-    font-size: 22px;
+    font-size: 25px;
     vertical-align: center;
     padding-top: 10px;
     text-shadow: 2px 2px 0px #000000ff;
@@ -535,10 +536,10 @@
 
 .DKFinishTime
 {
-    width: 170px;
+    width: 190px;
     height: 100%;
     color: #aee6ffff;
-    font-size: 22px;
+    font-size: 25px;
     text-align: right;
     vertical-align: center;
     padding-top: 10px;
@@ -604,6 +605,34 @@
     padding-top: 7px;
 }
 
+.DKMulticastText
+{
+    width: 360px;
+    height: 92px;
+    text-align: center;
+    color: #ffb43dff;
+    font-size: 38px;
+    font-weight: bold;
+    text-shadow: 0px 0px 5px 4.0 #611500ff;
+    background-color: #00000000;
+    border: 0px solid #00000000;
+    white-space: nowrap;
+    padding-top: 4px;
+}
+
+.DKConcoctionTimerText
+{
+    width: 140px;
+    height: 54px;
+    text-align: center;
+    color: #fff06aff;
+    font-size: 36px;
+    font-weight: bold;
+    text-shadow: 0px 0px 4px 4.0 #5a2000ff;
+    background-color: #00000000;
+    border: 0px solid #00000000;
+    padding-top: 4px;
+}
 
 /* FIX58: host race setup panel. */
 .DKHostSetupPanel

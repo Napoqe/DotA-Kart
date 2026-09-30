@@ -34,6 +34,7 @@
         left: "dotakart16_" + RUN_ID + "_left",
         right: "dotakart16_" + RUN_ID + "_right",
         item: "dotakart16_" + RUN_ID + "_item",
+        force_forward: "dotakart16_" + RUN_ID + "_force_forward",
         release: "dotakart16_" + RUN_ID + "_release_all"
     };
 
@@ -41,7 +42,8 @@
         forward: false,
         reverse: false,
         left: false,
-        right: false
+        right: false,
+        force_forward: false
     };
 
     var lastSent = "";
@@ -85,7 +87,8 @@
             input.forward ? "1" : "0",
             input.reverse ? "1" : "0",
             input.left ? "1" : "0",
-            input.right ? "1" : "0"
+            input.right ? "1" : "0",
+            input.force_forward ? "1" : "0"
         ].join("");
     }
 
@@ -112,7 +115,8 @@
             forward: input.forward ? 1 : 0,
             reverse: input.reverse ? 1 : 0,
             left: input.left ? 1 : 0,
-            right: input.right ? 1 : 0
+            right: input.right ? 1 : 0,
+            force_forward: input.force_forward ? 1 : 0
         });
 
         if (debug || sig !== "0000") {
@@ -120,7 +124,8 @@
                 " W=" + (input.forward ? 1 : 0) +
                 " S=" + (input.reverse ? 1 : 0) +
                 " A=" + (input.left ? 1 : 0) +
-                " D=" + (input.right ? 1 : 0));
+                " D=" + (input.right ? 1 : 0) +
+                " R=" + (input.force_forward ? 1 : 0));
         }
     }
 
@@ -131,15 +136,32 @@
         if (input[name] === down) return;
 
         input[name] = down;
+
+        // FIX108: R keeps the Spectral Dagger force-forward flag AND restores the old
+        // hold-to-look-back camera from FIX51. The camera script is loaded before input.
+        if (name === "force_forward") {
+            try {
+                if (GameUI && typeof GameUI.SetDotaKartRearView === "function") {
+                    GameUI.SetDotaKartRearView(down);
+                }
+            } catch (e) { }
+        }
+
         SendState(true);
     }
 
     function ReleaseAll() {
-        var changed = input.forward || input.reverse || input.left || input.right;
+        var changed = input.forward || input.reverse || input.left || input.right || input.force_forward;
         input.forward = false;
         input.reverse = false;
         input.left = false;
         input.right = false;
+        input.force_forward = false;
+        try {
+            if (GameUI && typeof GameUI.SetDotaKartRearView === "function") {
+                GameUI.SetDotaKartRearView(false);
+            }
+        } catch (e) { }
         SendState(changed || true);
     }
 
@@ -149,7 +171,8 @@
         GameEvents.SendCustomGameEventToServer("dotakart_input_item", {
             PlayerID: playerID,
             player_id: playerID,
-            playerID: playerID
+            playerID: playerID,
+            force_forward: input.force_forward ? 1 : 0
         });
         Msg("item p" + playerID);
     }
@@ -200,6 +223,9 @@
         AddCommand("+" + CMD.item, function () { UseItem(); });
         AddCommand("-" + CMD.item, function () { });
 
+        AddCommand("+" + CMD.force_forward, function () { SetKey("force_forward", true); });
+        AddCommand("-" + CMD.force_forward, function () { SetKey("force_forward", false); });
+
         AddCommand(CMD.release, function () { ReleaseAll(); });
     }
 
@@ -209,12 +235,14 @@
         BindKey("a", "+" + CMD.left);
         BindKey("d", "+" + CMD.right);
         BindKey("t", "+" + CMD.item);
+        BindKey("r", "+" + CMD.force_forward);
 
         BindKey("W", "+" + CMD.forward);
         BindKey("S", "+" + CMD.reverse);
         BindKey("A", "+" + CMD.left);
         BindKey("D", "+" + CMD.right);
         BindKey("T", "+" + CMD.item);
+        BindKey("R", "+" + CMD.force_forward);
     }
 
     function PrintManualBinds() {
@@ -224,13 +252,14 @@
         Msg("bind a +" + CMD.left);
         Msg("bind d +" + CMD.right);
         Msg("bind t +" + CMD.item);
+        Msg("bind r +" + CMD.force_forward + "  // segure R: Rear View; R+T: Spectral Dagger force-forward/atalho");
     }
 
     function RebindThink() {
         if (rebindCount >= REBIND_ATTEMPTS) return;
         rebindCount++;
         ApplyKeyBinds();
-        Msg("binds UNICOS W/S/A/D/T aplicados tentativa " + rebindCount + ". player=" + GetPlayerID() + " run=" + RUN_ID);
+        Msg("binds UNICOS W/S/A/D/T/R aplicados tentativa " + rebindCount + ". player=" + GetPlayerID() + " run=" + RUN_ID);
         $.Schedule(REBIND_INTERVAL, RebindThink);
     }
 

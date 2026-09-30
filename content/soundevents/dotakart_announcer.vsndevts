@@ -1,174 +1,660 @@
-// DotA Kart custom announcer and lap sounds - FIX44
-// Coloque os MP3 brutos em: content/dota_addons/dota_kart/sounds/
-// Depois faça Full Recompile deste arquivo no Asset Browser.
-
-"dotakart_announcer_place_01"
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
 {
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_01.vsnd" ]
-}
+	dotakart_announcer_place_01 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_01.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	vo_announcer_ann_custom_place_01 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_01.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_announcer_place_02 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_02.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	vo_announcer_ann_custom_place_02 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_02.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_announcer_place_03 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_03.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	vo_announcer_ann_custom_place_03 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_03.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_announcer_place_04 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_04.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	vo_announcer_ann_custom_place_04 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_04.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_announcer_place_05 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_05.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	vo_announcer_ann_custom_place_05 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_05.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_announcer_place_06 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_06.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	vo_announcer_ann_custom_place_06 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_06.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_announcer_place_07 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_07.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	vo_announcer_ann_custom_place_07 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_07.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_announcer_place_08 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_08.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	vo_announcer_ann_custom_place_08 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo_announcer_ann_custom_place_08.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_engine_idle =
+	{
+		type = "dota_src1_3d"
+		vsnd_files =
+		[
+			"sounds/dotakart/kart engine/engine_idle.vsnd",
+		]
+		volume = "0.95"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "78.0"
+		block_matching_entity = true
+		instance_limit = 1
+		preload_vsnds = 1
+	}
+	engine_idle =
+	{
+		type = "dota_src1_3d"
+		vsnd_files =
+		[
+			"sounds/dotakart/kart engine/engine_idle.vsnd",
+		]
+		volume = "0.85"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "75.0"
+	}
+	dotakart_lap_complete =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/ui/treasure_01.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_final_lap =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/items/black_king_bar.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_race_start =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo/announcer/announcer_battle_begin_01.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_burrowstrike_cast =
+	{
+		type = "dota_src1_3d"
+		vsnd_files =
+		[
+			"sounds/weapons/hero/sand_king/sand_king_burrow_attack.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+	}
+	dotakart_spectral_dagger_cast =
+	{
+		type = "dota_src1_3d"
+		vsnd_files =
+		[
+			"sounds/weapons/hero/spectre/dagger_cast.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+	}
+	dotakart_spectral_dagger_impact =
+	{
+		type = "dota_src1_3d"
+		vsnd_files =
+		[
+			"sounds/weapons/hero/spectre/dagger_impact.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+	}
+	dotakart_spectral_dagger_impact_alt =
+	{
+		type = "dota_src1_3d"
+		vsnd_files =
+		[
+			"sounds/weapons/hero/spectre/dagger_impact.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+	}
+	dotakart_spectral_dagger_cast_2d =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/weapons/hero/spectre/dagger_cast.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+	}
+	dotakart_spectral_dagger_impact_2d =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/weapons/hero/spectre/dagger_impact.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+	}
+	dotakart_unstable_concoction_fuse =
+	{
+		type = "dota_src1_3d"
+		vsnd_files =
+		[
+			"sounds/weapons/hero/alchemist/unstable_concoction_fuse.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+	}
+	dotakart_unstable_concoction_throw =
+	{
+		type = "dota_src1_3d"
+		vsnd_files =
+		[
+			"sounds/weapons/hero/alchemist/unstable_concoction_throw.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+	}
+	dotakart_unstable_concoction_stun =
+	{
+		type = "dota_src1_3d"
+		vsnd_files =
+		[
+			"sounds/weapons/hero/alchemist/unstable_concoction_stun01.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+	}
+	dotakart_countdown_01 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo/announcer/ann_custom_countdown_01.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_countdown_02 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo/announcer/ann_custom_countdown_02.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_countdown_03 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo/announcer/ann_custom_countdown_03.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_countdown_04 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo/announcer/ann_custom_countdown_04.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_countdown_05 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo/announcer/ann_custom_countdown_05.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_countdown_06 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo/announcer/ann_custom_countdown_06.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_countdown_07 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo/announcer/ann_custom_countdown_07.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_countdown_08 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo/announcer/ann_custom_countdown_08.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_countdown_09 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo/announcer/ann_custom_countdown_09.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
+	dotakart_countdown_10 =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/vo/announcer/ann_custom_countdown_10.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+	}
 
-"dotakart_announcer_place_02"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_02.vsnd" ]
-}
+	dotakart_xmarks_target =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/weapons/hero/kunkka/x_mark_target.vsnd",
+		]
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "81.0"
+		spread_radius = "300.0"
+		preload_vsnds = 1
+	}
+	dotakart_xmarks_movement =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/weapons/hero/kunkka/xmark_target_movement.vsnd",
+		]
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "81.0"
+		spread_radius = "300.0"
+		block_matching_entity = true
+		instance_limit = 1
+		preload_vsnds = 1
+	}
+	dotakart_xmarks_return =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/weapons/hero/kunkka/x_snapback.vsnd",
+		]
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "81.0"
+		spread_radius = "300.0"
+		preload_vsnds = 1
+	}
 
-"dotakart_announcer_place_03"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_03.vsnd" ]
-}
+	dotakart_itembox_spin_loop =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/rylais_wheel_spin_02_lp.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "90.0"
+		block_matching_entity = true
+		instance_limit = 1
+		preload_vsnds = 1
+	}
+	dotakart_itembox_crate_break =
+	{
+		type = "dota_src1_3d"
+		vsnd_files =
+		[
+			"sounds/wood_crate_break_03.vsnd",
+		]
+		volume = "1.0"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "81.0"
+		distance_max = "2500.0"
+	}
 
-"dotakart_announcer_place_04"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_04.vsnd" ]
-}
+	dotakart_doppelwalk =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/phantom_lancer/doppelwalk.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "81.0"
+	}
+	dotakart_shukuchi =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/weaver/shukuchi.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "81.0"
+	}
+	dotakart_crystal_clone_cast =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/crystal_maiden/crystal_clone_cast.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "81.0"
+	}
+	dotakart_crystal_clone_destroy =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/crystal_maiden/crystal_clone_destroy.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+	}
 
-"dotakart_announcer_place_05"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_05.vsnd" ]
-}
+	dotakart_crystal_clone_frostbite =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/crystal_maiden/frostbite.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+		spread_radius = "300.0"
+		preload_vsnds = 1
+	}
 
-"dotakart_announcer_place_06"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_06.vsnd" ]
-}
-
-"dotakart_announcer_place_07"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_07.vsnd" ]
-}
-
-"dotakart_announcer_place_08"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/Vo_announcer_ann_custom_place_08.vsnd" ]
-}
-
-// Efeitos temporarios de volta. Podem ser trocados depois por MP3 customizados.
-"dotakart_lap_complete"
-{
-    type = "dota_src1_2d"
-    volume = 0.80
-    pitch = 1.0
-    vsnd_files = [ "sounds/ui/treasure_01.vsnd" ]
-}
-
-"dotakart_final_lap"
-{
-    type = "dota_src1_2d"
-    volume = 0.90
-    pitch = 1.0
-    vsnd_files = [ "sounds/items/black_king_bar.vsnd" ]
-}
-
-// FIX51: start grid countdown aliases. Use these soundevents from Lua/Panorama instead of raw .vsnd paths.
-
-"dotakart_countdown_01"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_01.vsnd" ]
-}
-
-"dotakart_countdown_02"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_02.vsnd" ]
-}
-
-"dotakart_countdown_03"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_03.vsnd" ]
-}
-
-"dotakart_countdown_04"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_04.vsnd" ]
-}
-
-"dotakart_countdown_05"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_05.vsnd" ]
-}
-
-"dotakart_countdown_06"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_06.vsnd" ]
-}
-
-"dotakart_countdown_07"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_07.vsnd" ]
-}
-
-"dotakart_countdown_08"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_08.vsnd" ]
-}
-
-"dotakart_countdown_09"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_09.vsnd" ]
-}
-
-"dotakart_countdown_10"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/vo/announcer/ann_custom_countdown_10.vsnd" ]
-}
-
-"dotakart_race_start"
-{
-    type = "dota_src1_2d"
-    volume = 1.0
-    pitch = 1.0
-    vsnd_files = [ "sounds/vo/announcer/announcer_battle_begin_01.vsnd" ]
+	dotakart_leap =
+	{
+		type = "dota_update_default"
+		vsnd_files =
+		[
+			"sounds/weapons/hero/mirana/leap1.vsnd",
+			"sounds/weapons/hero/mirana/leap2.vsnd",
+			"sounds/weapons/hero/mirana/leap3.vsnd",
+			"sounds/weapons/hero/mirana/leap4.vsnd",
+		]
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+		spread_radius = "300.0"
+		preload_vsnds = 1
+	}
 }

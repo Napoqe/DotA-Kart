@@ -13,6 +13,7 @@
                 <Panel class="DKSetupHeaderTexts" hittest="false">
                     <Label id="DKSetupTitle" text="#DOTA_KART_SETUP_TITLE" />
                     <Label id="DKSetupSubtitle" text="#DOTA_KART_SETUP_SUBTITLE" />
+                    <Label id="DKSetupCountdown" class="DKSetupCountdown" text="1:20" />
                 </Panel>
                 <Button id="DKSetupCollapse" class="DKSetupCollapseButton" hittest="true" onactivate="DotaKartSetup_ToggleCollapse()"><Label id="DKSetupCollapseLabel" text="-" /></Button>
             </Panel>

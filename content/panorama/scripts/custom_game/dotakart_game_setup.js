@@ -127,6 +127,13 @@ DotaKartGameSetup.GetPayloadNumber = function (payload, key, fallback) {
     return v;
 };
 
+DotaKartGameSetup.FormatCountdown = function (seconds) {
+    seconds = Math.max(0, Math.ceil(Number(seconds) || 0));
+    var minutes = Math.floor(seconds / 60);
+    var secs = seconds % 60;
+    return String(minutes) + ":" + (secs < 10 ? "0" : "") + String(secs);
+};
+
 DotaKartGameSetup.RefreshSettings = function (payload) {
     payload = payload || DotaKartGameSetup.lastPayload || {};
 
@@ -135,6 +142,13 @@ DotaKartGameSetup.RefreshSettings = function (payload) {
     DotaKartGameSetup.maxBots = Math.max(0, Math.min(7, DotaKartGameSetup.GetPayloadNumber(payload, "max_bots", DotaKartGameSetup.maxBots || 7)));
     DotaKartGameSetup.maxPlayers = Math.max(1, Math.min(8, DotaKartGameSetup.GetPayloadNumber(payload, "max_players", DotaKartGameSetup.maxPlayers || 8)));
     DotaKartGameSetup.locked = Number(payload.locked || 0) === 1 || Number(payload.race_started || 0) === 1;
+
+    var setupRemaining = DotaKartGameSetup.GetPayloadNumber(payload, "setup_remaining", 80);
+    var setupTimer = DotaKartGameSetup.Find("DKSetupCountdown");
+    if (setupTimer) {
+        setupTimer.text = DotaKartGameSetup.FormatCountdown(setupRemaining);
+        setupTimer.SetHasClass("DKSetupCountdownUrgent", setupRemaining > 0 && setupRemaining <= 10);
+    }
 
     var panel = DotaKartGameSetup.Find("DKSetupSettingsPanel");
     var root = DotaKartGameSetup.Root();
@@ -405,7 +419,7 @@ DotaKartGameSetup.RequestLoop = function () {
 
 DotaKartGameSetup.Init = function () {
     DotaKartGameSetup.HookStaticButtons();
-    DotaKartGameSetup.RefreshAll({ laps: 3, bot_count: -1, max_bots: 7, max_players: 8, host_player_id: 0 });
+    DotaKartGameSetup.RefreshAll({ laps: 3, bot_count: -1, max_bots: 7, max_players: 8, host_player_id: 0, setup_remaining: 80 });
     if (!DotaKartGameSetup.subscribed) {
         try { GameEvents.Subscribe("dotakart_host_settings_update", DotaKartGameSetup.RefreshAll); } catch (e) {}
         DotaKartGameSetup.subscribed = true;

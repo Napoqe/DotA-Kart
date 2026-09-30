@@ -62,6 +62,13 @@
     var LOOK_BACK_RUN_ID = String((new Date()).getTime() % 1000000000) + "_" + String(Math.floor(Math.random() * 1000000));
     var LOOK_BACK_CMD = "dotakart51_" + LOOK_BACK_RUN_ID + "_look_back";
 
+    // FIX108: dotakart_input.js owns the final R bind (R+T is also used by Spectral Dagger).
+    // Export the already-existing rear-view state so one R press can drive BOTH systems
+    // instead of the two Panorama scripts overwriting each other's keybind.
+    GameUI.SetDotaKartRearView = function (enabled) {
+        LOOK_BACK = !!enabled;
+    };
+
     function Msg(text) {
         $.Msg("[DotA Kart Camera] " + text);
     }

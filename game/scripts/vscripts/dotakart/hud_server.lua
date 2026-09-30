@@ -83,6 +83,13 @@ function DotaKartHUD:Init()
     self.lapCheckpointPercents = { 0.25, 0.50, 0.75 }
     self.requiredLapCheckpoints = 3
 
+    -- FIX83: validacao forte por entidades dk_track_*.
+    -- Cruzar a linha so conta se o kart passou perto de pelo menos 60% dos pontos
+    -- dk_track_001..dk_track_N nesta volta. Isso impede farmar volta indo e voltando
+    -- na finish_line_gate sem completar a pista.
+    self.trackPointVisitRadius = 1500
+    self.requiredTrackPointVisitPercent = 0.60
+
     -- FIX43: placar final / tela de chegada.
     self.finishOrder = {}
     self.finishCount = 0
@@ -369,18 +376,80 @@ function DotaKartHUD:ResetLapValidationForRacer(racer, now)
     racer.max_distance_this_lap = 0
     racer.lap_checkpoints = {}
     racer.lap_checkpoint_count = 0
+    racer.track_point_visits = {}
+    racer.track_point_visit_count = 0
     racer.last_lap_time = now or racer.last_lap_time or 0
+    -- FIX74: volta so fica armada depois que o kart sai de verdade da largada
+    -- e cruza checkpoints em ordem; evita contar volta passando novamente na linha.
+    racer.lap_valid_started = false
+    racer.last_checkpoint_distance = nil
 end
 
-function DotaKartHUD:UpdateLapCheckpoints(racer, distance, len)
+function DotaKartHUD:GetTrackPointRequiredVisitCount()
+    local total = #(self.trackWorldPoints or {})
+    if total <= 0 then return 0, 0 end
+    local pct = tonumber(self.requiredTrackPointVisitPercent or 0.60) or 0.60
+    pct = DKClamp(pct, 0.01, 1.0)
+    return math.max(1, math.ceil(total * pct)), total
+end
+
+function DotaKartHUD:UpdateTrackPointVisits(racer, pos)
+    if racer == nil or pos == nil then return end
+    local points = self.trackWorldPoints or {}
+    if #points <= 0 then return end
+
+    racer.track_point_visits = racer.track_point_visits or {}
+    racer.track_point_visit_count = tonumber(racer.track_point_visit_count or 0) or 0
+
+    local radius = tonumber(self.trackPointVisitRadius or 1500) or 1500
+    local radiusSq = radius * radius
+
+    for i, p in ipairs(points) do
+        if racer.track_point_visits[i] ~= true and p ~= nil then
+            local dx = (pos.x or 0) - (p.x or 0)
+            local dy = (pos.y or 0) - (p.y or 0)
+            if (dx * dx + dy * dy) <= radiusSq then
+                racer.track_point_visits[i] = true
+                racer.track_point_visit_count = racer.track_point_visit_count + 1
+                if self.debugHud then
+                    local need, total = self:GetTrackPointRequiredVisitCount()
+                    print("[DotaKartHUD] Player " .. tostring(racer.player_id) .. " dk_track visit " .. tostring(racer.track_point_visit_count) .. "/" .. tostring(total) .. " need=" .. tostring(need))
+                end
+            end
+        end
+    end
+end
+
+function DotaKartHUD:UpdateLapCheckpoints(racer, lastDistance, distance, len, pos)
     if racer == nil or len == nil or len <= 0 then return end
+    if distance == nil then return end
     if racer.lap_checkpoints == nil then racer.lap_checkpoints = {} end
     racer.lap_checkpoint_count = tonumber(racer.lap_checkpoint_count or 0) or 0
+
+    -- Nao aceite checkpoints enquanto o kart ainda esta dentro/colado na linha de chegada.
+    -- Perto do finish_line_gate a projecao da pista pode alternar entre inicio/fim da spline
+    -- e antes isso podia armar todos os checkpoints sem uma volta completa.
+    if pos ~= nil and self:IsInsideFinishGate(pos, self.finishGateExitRadius or 650) then
+        racer.last_checkpoint_distance = distance
+        return
+    end
+
+    if racer.lap_valid_started ~= true and distance >= len * 0.12 then
+        racer.lap_valid_started = true
+    end
+
+    local prev = tonumber(lastDistance or racer.last_checkpoint_distance or distance) or distance
+    local delta = distance - prev
+    racer.last_checkpoint_distance = distance
+
+    -- Ignora wrap/teleporte para tras na validacao de checkpoint.
+    if delta < -len * 0.20 then return end
 
     local checkpoints = self.lapCheckpointPercents or { 0.25, 0.50, 0.75 }
     for i, pct in ipairs(checkpoints) do
         local threshold = len * pct
-        if distance >= threshold and racer.lap_checkpoints[i] ~= true then
+        local previousOK = (i == 1) or racer.lap_checkpoints[i - 1] == true
+        if previousOK and prev < threshold and distance >= threshold and racer.lap_checkpoints[i] ~= true then
             racer.lap_checkpoints[i] = true
             racer.lap_checkpoint_count = racer.lap_checkpoint_count + 1
             if self.debugHud then
@@ -407,12 +476,24 @@ function DotaKartHUD:CanCompleteLapAtGate(racer, now, len, lastDistance, distanc
     local timeOK = (now - (racer.last_lap_time or 0)) >= (self.minLapSeconds or 2.0)
     if not timeOK then return false, "min_time" end
 
+    if racer.lap_valid_started ~= true then return false, "not_left_start_zone" end
+
     local distanceOK = (racer.max_distance_this_lap or 0) >= len * (self.lapPassPercent or 0.72)
     if not distanceOK then return false, "not_enough_distance" end
 
     local checkpointNeed = tonumber(self.requiredLapCheckpoints or 3) or 3
     local checkpointOK = (racer.lap_checkpoint_count or 0) >= checkpointNeed
     if not checkpointOK then return false, "missing_checkpoints" end
+
+    -- FIX83: validacao por proximidade real das entidades dk_track_*.
+    -- Requer no minimo 60% dos pontos visitados antes de permitir completar volta.
+    local trackNeed, trackTotal = self:GetTrackPointRequiredVisitCount()
+    if trackTotal > 0 then
+        local visited = tonumber(racer.track_point_visit_count or 0) or 0
+        if visited < trackNeed then
+            return false, "missing_track_points_" .. tostring(visited) .. "_of_" .. tostring(trackNeed)
+        end
+    end
 
     local directionOK = self:IsForwardFinishWrap(lastDistance, distance, len)
 
@@ -461,7 +542,8 @@ function DotaKartHUD:HandleFinishGateCrossing(racer, now, pos, lastDistance, dis
     if canComplete then
         self:CompleteLap(racer, now)
     elseif self.debugHud then
-        print("[DotaKartHUD] Volta rejeitada p" .. tostring(racer.player_id) .. " reason=" .. tostring(reason) .. " checkpoints=" .. tostring(racer.lap_checkpoint_count or 0) .. " maxDist=" .. tostring(math.floor(racer.max_distance_this_lap or 0)))
+        local need, total = self:GetTrackPointRequiredVisitCount()
+        print("[DotaKartHUD] Volta rejeitada p" .. tostring(racer.player_id) .. " reason=" .. tostring(reason) .. " checkpoints=" .. tostring(racer.lap_checkpoint_count or 0) .. " dk_track=" .. tostring(racer.track_point_visit_count or 0) .. "/" .. tostring(total) .. " need=" .. tostring(need) .. " maxDist=" .. tostring(math.floor(racer.max_distance_this_lap or 0)))
     end
 
     return true
@@ -724,6 +806,12 @@ function DotaKartHUD:RegisterKart(playerID, hero)
         item = "",
         item_charges = 0,
         last_lap_time = -9999,
+        lap_checkpoints = {},
+        lap_checkpoint_count = 0,
+        track_point_visits = {},
+        track_point_visit_count = 0,
+        lap_valid_started = false,
+        last_checkpoint_distance = nil,
         last_project = nil
     }
 
@@ -759,6 +847,10 @@ function DotaKartHUD:ResetRacerForRace(racer, now)
     racer.finish_gate_passes = 0
     racer.lap_checkpoints = {}
     racer.lap_checkpoint_count = 0
+    racer.track_point_visits = {}
+    racer.track_point_visit_count = 0
+    racer.lap_valid_started = false
+    racer.last_checkpoint_distance = nil
 
     local unit = racer.unit
     if DKValidUnit(unit) then
@@ -808,6 +900,8 @@ function DotaKartHUD:StartRace(options)
     self.finishGateExitRadius = options.finish_gate_exit_radius or options.finishGateExitRadius or self.finishGateExitRadius or 650
     self.firstFinishGatePassIsFree = DKToBool(options.first_finish_gate_pass_is_free or options.firstFinishGatePassIsFree, self.firstFinishGatePassIsFree)
     self.requiredLapCheckpoints = options.required_checkpoints or options.requiredCheckpoints or self.requiredLapCheckpoints or 3
+    self.trackPointVisitRadius = options.track_point_visit_radius or options.trackPointVisitRadius or self.trackPointVisitRadius or 1500
+    self.requiredTrackPointVisitPercent = options.required_track_point_visit_percent or options.requiredTrackPointVisitPercent or self.requiredTrackPointVisitPercent or 0.60
     self:FindFinishLineGate()
 
     if self.trackLength <= 0 then
@@ -856,7 +950,8 @@ function DotaKartHUD:StartRace(options)
         end, 0.25 * i)
     end
 
-    print("[DotaKartHUD] Corrida iniciada. Voltas: " .. tostring(self.maxLaps) .. ", karts registrados: " .. tostring(racerCount))
+    local trackNeed, trackTotal = self:GetTrackPointRequiredVisitCount()
+    print("[DotaKartHUD] Corrida iniciada. Voltas: " .. tostring(self.maxLaps) .. ", karts registrados: " .. tostring(racerCount) .. ", dk_track lap gate: " .. tostring(trackNeed) .. "/" .. tostring(trackTotal) .. " radius=" .. tostring(self.trackPointVisitRadius or 1500))
     return true
 end
 
@@ -929,6 +1024,12 @@ function DotaKartHUD:CompleteLap(racer, now)
     racer.completed_laps = racer.completed_laps + 1
     racer.lap = math.min(racer.completed_laps + 1, self.maxLaps)
     racer.max_distance_this_lap = 0
+    racer.lap_checkpoints = {}
+    racer.lap_checkpoint_count = 0
+    racer.track_point_visits = {}
+    racer.track_point_visit_count = 0
+    racer.lap_valid_started = false
+    racer.last_checkpoint_distance = nil
     racer.last_lap_time = now
 
     print("[DotaKartHUD] Player " .. tostring(racer.player_id) .. " completou volta " .. tostring(racer.completed_laps) .. "/" .. tostring(self.maxLaps))
@@ -986,6 +1087,9 @@ function DotaKartHUD:UpdateSingleRacer(racer, now)
         racer.max_distance_this_lap = distance
         racer.lap_checkpoints = racer.lap_checkpoints or {}
         racer.lap_checkpoint_count = racer.lap_checkpoint_count or 0
+        racer.track_point_visits = racer.track_point_visits or {}
+        racer.track_point_visit_count = racer.track_point_visit_count or 0
+        self:UpdateTrackPointVisits(racer, pos)
         racer.finish_gate_inside = self:IsInsideFinishGate(pos, self.finishGateRadius or 430)
         if racer.finish_gate_inside == true and self.firstFinishGatePassIsFree == true then
             racer.first_finish_gate_passed = true
@@ -1001,7 +1105,8 @@ function DotaKartHUD:UpdateSingleRacer(racer, now)
             end
         end
 
-        self:UpdateLapCheckpoints(racer, distance, len)
+        self:UpdateTrackPointVisits(racer, pos)
+        self:UpdateLapCheckpoints(racer, lastDistance, distance, len, pos)
 
         local gateHandled = false
         if self.finishGatePos ~= nil then

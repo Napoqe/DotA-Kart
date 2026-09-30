@@ -30,5 +30,13 @@
         "DOTA_KART_SETUP_NO_PLAYERS_OUT" "No players outside."
         "DOTA_KART_SETUP_SLOT_VALUE" "SLOT %slot%"
         "DOTA_KART_SETUP_PLAYER_FALLBACK" "Player %id%"
+        "npc_dota_hero_dotakart_invoker" "Invoker Kart"
+        "npc_dota_hero_dotakart_brewmaster" "Brewmaster Kart"
+        "npc_dota_hero_dotakart_tinker" "Tinker Kart"
+        "npc_dota_hero_dotakart_lina" "Lina Kart"
+        "npc_dota_hero_dotakart_pudge" "Pudge Kart"
+        "npc_dota_hero_dotakart_tiny" "Tiny Kart"
+        "npc_dota_hero_dotakart_mirana" "Mirana Kart"
+        "npc_dota_hero_dotakart_juggernaut" "Juggernaut Kart"
     }
 }

@@ -389,23 +389,17 @@ end
 
 
 function DotaKartPublicAI:GetDefaultVisualHeroPool()
-    -- FIX66: pool interno sem Clock no começo. Evita depender de DOTA_KART_AI_HERO_POOL
-    -- caso a VM carregue ordem antiga/cacheada ou a tabela global esteja incompleta.
+    -- FIX88: somente Invoker usa custom hero; os outros pilotos usam heróis padrão
+    -- até seus modelos custom estarem prontos.
     return {
-        "npc_dota_hero_pudge",
-        "npc_dota_hero_tusk",
+        "npc_dota_hero_dotakart_invoker",
         "npc_dota_hero_brewmaster",
-        "npc_dota_hero_kunkka",
-        "npc_dota_hero_faceless_void",
-        "npc_dota_hero_phantom_assassin",
-        "npc_dota_hero_chaos_knight",
-        "npc_dota_hero_spirit_breaker",
+        "npc_dota_hero_tinker",
+        "npc_dota_hero_lina",
+        "npc_dota_hero_pudge",
+        "npc_dota_hero_tiny",
         "npc_dota_hero_mirana",
-        "npc_dota_hero_vengefulspirit",
-        "npc_dota_hero_venomancer",
-        "npc_dota_hero_lich",
-        "npc_dota_hero_invoker",
-        "npc_dota_hero_bounty_hunter"
+        "npc_dota_hero_juggernaut"
     }
 end
 
@@ -425,39 +419,74 @@ function DotaKartPublicAI:GetConfiguredHeroPool()
         out = self:GetDefaultVisualHeroPool()
     end
 
-    -- Clock só entra como última opção técnica se todo o resto falhar.
-    table.insert(out, "npc_dota_hero_rattletrap")
+    -- FIX84: não adiciona Clock/Rattletrap como fallback; bots públicos devem usar
+    -- somente os 8 pilotos oficiais definidos pelo DotA Kart.
     return out
+end
+
+function DotaKartPublicAI:GetCanonicalHeroKey(heroName)
+    heroName = tostring(heroName or "")
+    if heroName == "" then return "" end
+    -- FIX98: Invoker custom e Invoker base contam como o mesmo piloto.
+    if heroName == "npc_dota_hero_dotakart_invoker" or heroName == "npc_dota_hero_invoker" then
+        return "npc_dota_hero_invoker"
+    end
+    local baseMap = DOTA_KART_KART_BASE_HERO or {}
+    if baseMap[heroName] ~= nil and baseMap[heroName] ~= "" then
+        return tostring(baseMap[heroName])
+    end
+    return heroName
+end
+
+function DotaKartPublicAI:MarkHeroNameUsed(used, heroName)
+    if used == nil then return end
+    heroName = tostring(heroName or "")
+    if heroName == "" then return end
+    used[heroName] = true
+    local key = self:GetCanonicalHeroKey(heroName)
+    if key ~= nil and key ~= "" then used[key] = true end
+end
+
+function DotaKartPublicAI:IsHeroNameUsed(used, heroName)
+    if used == nil then return false end
+    heroName = tostring(heroName or "")
+    if heroName == "" then return false end
+    if used[heroName] == true then return true end
+    local key = self:GetCanonicalHeroKey(heroName)
+    return key ~= nil and key ~= "" and used[key] == true
 end
 
 function DotaKartPublicAI:GetBotHeroCandidates(slot)
     local pool = self:GetConfiguredHeroPool()
     local humanUsed = self:GetHumanHeroNames()
     local botUsed = self:GetBotHeroNames()
+    local used = {}
+    for k, v in pairs(humanUsed or {}) do if v == true then used[k] = true end end
+    for k, v in pairs(botUsed or {}) do if v == true then used[k] = true end end
+
     local candidates = {}
 
-    -- FIX64: monta uma ordem estável por slot, mas sem depender de RandomInt retornar algo
-    -- diferente a cada load. O rattletrap/Clock fica por último quando houver alternativas,
-    -- corrigindo o caso em que todos os computadores apareciam como Clock.
+    -- FIX98: 1 personagem por jogador/piloto. Invoker custom e Invoker base contam como o mesmo piloto.
     for _, heroName in ipairs(pool) do
-        if heroName ~= nil and heroName ~= "" and heroName ~= "npc_dota_hero_rattletrap" and humanUsed[heroName] ~= true and botUsed[heroName] ~= true then
+        if heroName ~= nil and heroName ~= "" and heroName ~= "npc_dota_hero_rattletrap" and not self:IsHeroNameUsed(used, heroName) then
             table.insert(candidates, heroName)
         end
     end
     for _, heroName in ipairs(pool) do
-        if heroName ~= nil and heroName ~= "" and heroName == "npc_dota_hero_rattletrap" and humanUsed[heroName] ~= true and botUsed[heroName] ~= true then
+        if heroName ~= nil and heroName ~= "" and heroName == "npc_dota_hero_rattletrap" and not self:IsHeroNameUsed(used, heroName) then
             table.insert(candidates, heroName)
         end
     end
 
+    -- Se todas as opções estiverem usadas, ainda respeita humanos e tenta sobras não-humanas.
     if #candidates <= 0 then
         for _, heroName in ipairs(pool) do
-            if heroName ~= nil and heroName ~= "" and heroName ~= "npc_dota_hero_rattletrap" and humanUsed[heroName] ~= true then
+            if heroName ~= nil and heroName ~= "" and heroName ~= "npc_dota_hero_rattletrap" and not self:IsHeroNameUsed(humanUsed, heroName) then
                 table.insert(candidates, heroName)
             end
         end
         for _, heroName in ipairs(pool) do
-            if heroName ~= nil and heroName ~= "" and heroName == "npc_dota_hero_rattletrap" and humanUsed[heroName] ~= true then
+            if heroName ~= nil and heroName ~= "" and heroName == "npc_dota_hero_rattletrap" and not self:IsHeroNameUsed(humanUsed, heroName) then
                 table.insert(candidates, heroName)
             end
         end
@@ -469,17 +498,11 @@ function DotaKartPublicAI:GetBotHeroCandidates(slot)
                 table.insert(candidates, heroName)
             end
         end
-        for _, heroName in ipairs(pool) do
-            if heroName ~= nil and heroName ~= "" and heroName == "npc_dota_hero_rattletrap" then
-                table.insert(candidates, heroName)
-            end
-        end
     end
 
-    if #candidates <= 0 then candidates = { "npc_dota_hero_rattletrap" } end
+    if #candidates <= 0 then candidates = { "npc_dota_hero_pudge" } end
 
-    -- FIX65: evita Clock na IA publica enquanto existirem outras opções.
-    -- O Clock ainda pode ser usado como unidade base técnica, mas não como escolha visual.
+    -- Evita Clock na IA publica enquanto existirem outras opções.
     if #candidates > 1 then
         local noClock = {}
         for _, heroName in ipairs(candidates) do
@@ -487,6 +510,7 @@ function DotaKartPublicAI:GetBotHeroCandidates(slot)
         end
         if #noClock > 0 then candidates = noClock end
     end
+
 
     -- Rotaciona a lista por slot/tempo para não ficar sempre no primeiro nome após hot reload.
     local shift = ((tonumber(slot) or 0) * 3 + math.floor((DKNow() or 0) * 10)) % #candidates
@@ -511,7 +535,7 @@ function DotaKartPublicAI:GetHumanHeroNames()
             pcall(function() hero = PlayerResource:GetSelectedHeroEntity(playerID) end)
             if DKValidUnit(hero) then
                 local name = hero:GetUnitName()
-                if name ~= nil and name ~= "" then used[name] = true end
+                self:MarkHeroNameUsed(used, name)
             end
         end
     end
@@ -534,7 +558,7 @@ function DotaKartPublicAI:GetBotHeroNames()
                 name = _G.DOTA_KART_UNIT_HERO_OVERRIDES[ent]
             end
             if name == nil or name == "" then name = bot.unit:GetUnitName() end
-            if name ~= nil and name ~= "" then used[name] = true end
+            self:MarkHeroNameUsed(used, name)
         end
     end
     return used
@@ -714,6 +738,57 @@ function DotaKartPublicAI:CreateHeroForExistingPlayer(playerID, heroName, spawn)
     return nil
 end
 
+function DotaKartPublicAI:TryCreateDotAKartInvokerFromBaseBot(slot, team, spawn)
+    -- FIX92: algumas builds do AddBotPlayerWithEntityScript não aceitam override_hero custom
+    -- diretamente. Para permitir que a IA escolha o Invoker custom, cria um bot Invoker base
+    -- e troca para npc_dota_hero_dotakart_invoker logo em seguida.
+    if GameRules == nil or GameRules.AddBotPlayerWithEntityScript == nil then return nil, nil, "api_missing" end
+    if PlayerResource == nil then return nil, nil, "playerresource_missing" end
+
+    local before = self:CapturePlayerIDs()
+    local botName = "CPU " .. tostring((tonumber(slot) or 0) + 1)
+    local scriptName = "dotakart/ai/public_ai_bot_entity"
+    local ok, result = pcall(function() return GameRules:AddBotPlayerWithEntityScript("npc_dota_hero_invoker", botName, team, scriptName) end)
+    if not ok then
+        ok, result = pcall(function() return GameRules:AddBotPlayerWithEntityScript("npc_dota_hero_invoker", botName, team, scriptName, false) end)
+    end
+    if not ok then
+        print("[DotaKartPublicAI] FIX92 fallback Invoker base falhou para custom Invoker: " .. tostring(result))
+        return nil, nil, "base_addbot_failed"
+    end
+
+    local baseHero, botPlayerID = self:FindNewBotHero("npc_dota_hero_invoker", team, spawn, before)
+    if botPlayerID == nil or tonumber(botPlayerID) == nil or tonumber(botPlayerID) < 0 then
+        if DKValidUnit(baseHero) then pcall(function() botPlayerID = baseHero:GetPlayerOwnerID() end) end
+    end
+
+    local customHero = nil
+    if tonumber(botPlayerID) ~= nil and tonumber(botPlayerID) >= 0 and PlayerResource.ReplaceHeroWith ~= nil then
+        local okReplace, replaced = pcall(function()
+            return PlayerResource:ReplaceHeroWith(tonumber(botPlayerID), "npc_dota_hero_dotakart_invoker", 0, 0)
+        end)
+        if okReplace and DKValidUnit(replaced) then
+            customHero = replaced
+        else
+            customHero = self:GetHeroForPlayerID(botPlayerID, "npc_dota_hero_dotakart_invoker")
+        end
+    end
+
+    if not DKValidUnit(customHero) then
+        customHero = self:CreateHeroForExistingPlayer(botPlayerID, "npc_dota_hero_dotakart_invoker", spawn)
+    end
+
+    if DKValidUnit(customHero) then
+        customHero:SetAbsOrigin(spawn)
+        FindClearSpaceForUnit(customHero, spawn, true)
+        print("[DotaKartPublicAI] FIX92 bot custom Invoker criado via base fallback slot=" .. tostring(slot) .. " playerID=" .. tostring(botPlayerID))
+        return customHero, botPlayerID, "addbot_base_then_replace_custom_invoker"
+    end
+
+    print("[DotaKartPublicAI] FIX92 fallback base Invoker executou, mas custom Invoker não apareceu.")
+    return nil, botPlayerID, "custom_invoker_replace_failed"
+end
+
 function DotaKartPublicAI:TryCreateIntegratedBotPlayerHero(slot, heroName, team, spawn)
     if self.config == nil or self.config.use_real_hero_bots ~= true then return nil, nil, "disabled" end
     if GameRules == nil or GameRules.AddBotPlayerWithEntityScript == nil then return nil, nil, "api_missing" end
@@ -786,19 +861,59 @@ function DotaKartPublicAI:TryCreateDirectHeroUnit(heroName, team, spawn)
     return nil, "direct_failed"
 end
 
+function DotaKartPublicAI:ApplyCustomInvokerVisualToBaseBot(unit, displayHeroName)
+    if not DKValidUnit(unit) then return end
+    local heroName = tostring(displayHeroName or "npc_dota_hero_dotakart_invoker")
+    if GameRules ~= nil and GameRules.AddonTemplate ~= nil and GameRules.AddonTemplate.ApplyCustomKartHeroModel ~= nil then
+        pcall(function() GameRules.AddonTemplate:ApplyCustomKartHeroModel(unit) end)
+    end
+    self:ApplyBotVisualHero(unit, heroName)
+    pcall(function() unit.dk_kart_custom_ai_invoker = true end)
+end
+
+function DotaKartPublicAI:TryCreateCustomInvokerAsStableBaseBot(slot, team, spawn)
+    -- FIX104: criar npc_dota_hero_dotakart_invoker diretamente ou via ReplaceHeroWith pode
+    -- falhar como "invalid" e deixar o bot parado/fora do grid. Usa Invoker base integrado
+    -- para obter PlayerID/controle normal, e aplica o modelo custom do kart no próprio herói.
+    local unit, botPlayerID, mode = self:TryCreateIntegratedBotPlayerHero(slot, "npc_dota_hero_invoker", team, spawn)
+    if DKValidUnit(unit) then
+        pcall(function() unit:SetAbsOrigin(spawn) end)
+        pcall(function() FindClearSpaceForUnit(unit, spawn, true) end)
+        self:ApplyCustomInvokerVisualToBaseBot(unit, "npc_dota_hero_dotakart_invoker")
+        return unit, botPlayerID, "base_invoker_bot_custom_visual"
+    end
+
+    unit, mode = self:TryCreateDirectHeroUnit("npc_dota_hero_invoker", team, spawn)
+    if DKValidUnit(unit) then
+        self:ApplyCustomInvokerVisualToBaseBot(unit, "npc_dota_hero_dotakart_invoker")
+        return unit, nil, "direct_base_invoker_custom_visual"
+    end
+
+    return nil, nil, "custom_invoker_base_failed"
+end
+
 function DotaKartPublicAI:CreateIntegratedHeroUnitForSlot(slot, heroName, team, spawn)
-    local unit, botPlayerID, mode = self:TryCreateIntegratedBotPlayerHero(slot, heroName, team, spawn)
+    local unit, botPlayerID, mode = nil, nil, nil
+
+    -- FIX104: o piloto Invoker custom da IA usa Invoker base integrado com visual custom.
+    -- Isso evita ReplaceHeroWith inválido, spawn errado e bot parado, mas mantém um único
+    -- piloto Invoker na lógica de heróis únicos.
+    if heroName == "npc_dota_hero_dotakart_invoker" then
+        unit, botPlayerID, mode = self:TryCreateCustomInvokerAsStableBaseBot(slot, team, spawn)
+        if DKValidUnit(unit) then return unit, botPlayerID, mode end
+        return nil, nil, "custom_invoker_failed"
+    end
+
+    unit, botPlayerID, mode = self:TryCreateIntegratedBotPlayerHero(slot, heroName, team, spawn)
     if DKValidUnit(unit) then return unit, botPlayerID, mode end
 
     -- Fallback: se a API de fake client não existir no ambiente, tenta criar o herói real por unidade.
     unit, mode = self:TryCreateDirectHeroUnit(heroName, team, spawn)
     if DKValidUnit(unit) then return unit, nil, mode end
 
-    -- Último fallback técnico para não deixar a partida sem computador. Este fallback fica logado.
-    print("[DotaKartPublicAI] FIX67 fallback tecnico Clock usado somente porque falhou criar heroi real: " .. tostring(heroName))
-    local clock = nil
-    pcall(function() clock = CreateUnitByName("npc_dota_hero_rattletrap", spawn, true, nil, nil, team) end)
-    if DKValidUnit(clock) then return clock, nil, "fallback_clock" end
+    -- FIX84: sem fallback para Clock/Rattletrap. Se um piloto oficial falhar, o slot fica sem bot
+    -- e o erro aparece no console para corrigirmos o herói/modelo certo.
+    print("[DotaKartPublicAI] FIX93 falhou criar piloto oficial: " .. tostring(heroName))
     return nil, nil, "failed"
 end
 
@@ -961,14 +1076,26 @@ function DotaKartPublicAI:CreateBotForSlot(slot)
     end
 
     local spawn = self:GetStartPositionForSlot(slot)
-    local heroName = self:ChooseBotHeroName(slot)
+    local candidates = self:GetBotHeroCandidates(slot)
+    local heroName = nil
+    local unit, botPlayerID, creationMode = nil, nil, nil
 
-    -- FIX67: tenta criar o computador como herói real integrado primeiro, igual a um jogador humano.
-    -- Não usa mais unidade técnica Clock escondida + prop_dynamic como no FIX66.
-    local unit, botPlayerID, creationMode = self:CreateIntegratedHeroUnitForSlot(slot, heroName, team, spawn)
+    -- FIX98: tenta candidatos em sequência. Isso evita que falha do Custom Invoker crie
+    -- outro Invoker base ou repita piloto já usado.
+    for _, candidate in ipairs(candidates or {}) do
+        local u, pid, mode = self:CreateIntegratedHeroUnitForSlot(slot, candidate, team, spawn)
+        if DKValidUnit(u) then
+            unit = u
+            botPlayerID = pid
+            creationMode = mode
+            heroName = candidate
+            break
+        end
+        print("[DotaKartPublicAI] FIX98 candidato falhou slot=" .. tostring(slot) .. " hero=" .. tostring(candidate) .. " mode=" .. tostring(mode))
+    end
 
     if not DKValidUnit(unit) then
-        print("[DotaKartPublicAI] ERRO: nao consegui criar bot integrado slot " .. tostring(slot) .. " hero=" .. tostring(heroName))
+        print("[DotaKartPublicAI] ERRO: nao consegui criar bot integrado slot " .. tostring(slot) .. " candidates=" .. tostring(#(candidates or {})))
         return nil
     end
 
@@ -1341,10 +1468,10 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
             self:UseHeldItem(bot, false)
             return
         elseif kind == "sacred_arrow" or kind == "swap_missile" or kind == "venomous_gale" or
-            kind == "chaos_bolt" or kind == "ice_shards" or kind == "tornado" then
+            kind == "chaos_bolt" or kind == "spectral_dagger" or kind == "battle_hunger" or kind == "x_marks" or kind == "ice_shards" or kind == "tornado" then
             self:UseHeldItem(bot, true)
             return
-        elseif kind == "star" or kind == "frost_shield" or kind == "power_cogs" or kind == "invisibility" then
+        elseif kind == "star" or kind == "frost_shield" or kind == "power_cogs" or kind == "invisibility" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" then
             self:UseHeldItem(bot, false)
             return
         elseif kind == "nitro" then
@@ -1363,7 +1490,7 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
 
     if kind == "nitro" then
         if DKValidUnit(ahead) or boxAhead ~= nil or DKRandomFloat(0, 1) < 0.45 then self:UseHeldItem(bot, false) end
-    elseif kind == "star" or kind == "invisibility" or kind == "frost_shield" then
+    elseif kind == "star" or kind == "invisibility" or kind == "frost_shield" or kind == "bloodlust" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" then
         if DKValidUnit(near) or DKRandomFloat(0, 1) < 0.30 then self:UseHeldItem(bot, false) end
     elseif kind == "power_cogs" then
         if DKValidUnit(near) then self:UseHeldItem(bot, false) end
@@ -1371,7 +1498,7 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
         if DKValidUnit(behind) or DKRandomFloat(0, 1) < 0.40 then self:UseHeldItem(bot, false) end
     elseif kind == "charge_darkness" or kind == "chain_frost" or kind == "item_steal" then
         if DKValidUnit(near) or DKValidUnit(ahead) then self:UseHeldItem(bot, false) end
-    elseif kind == "meat_hook" or kind == "hookshot" or kind == "sacred_arrow" or kind == "swap_missile" or kind == "venomous_gale" or kind == "chaos_bolt" or kind == "ice_shards" or kind == "tornado" then
+    elseif kind == "meat_hook" or kind == "hookshot" or kind == "sacred_arrow" or kind == "swap_missile" or kind == "venomous_gale" or kind == "chaos_bolt" or kind == "spectral_dagger" or kind == "battle_hunger" or kind == "x_marks" or kind == "ice_shards" or kind == "tornado" then
         if DKValidUnit(ahead) then self:UseHeldItem(bot, false) end
     else
         if DKRandomFloat(0, 1) < 0.20 then self:UseHeldItem(bot, false) end
@@ -1394,6 +1521,27 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
             pcall(function() bot.unit:RemoveNoDraw() end)
             return
         end
+    end
+
+    -- FIX81: esta versão restaurada da public_ai.lua também precisa respeitar Root.
+    -- Root impede movimento do kart; itens de mobilidade continuam bloqueados no item_system.lua.
+    if controller ~= nil and controller.IsKartRooted ~= nil and controller:IsKartRooted(bot.player_id, now) then
+        bot.current_speed = 0
+        if controller.GetState ~= nil then
+            local st = controller:GetState(bot.player_id)
+            if st ~= nil then
+                st.speed = 0
+                st.input = st.input or {}
+                st.input.forward = false
+                st.input.reverse = false
+                st.input.left = false
+                st.input.right = false
+            end
+        end
+        pcall(function() bot.unit:SetForwardVector(bot.last_dir or bot.unit:GetForwardVector()) end)
+        pcall(function() bot.unit:RemoveNoDraw() end)
+        self:ThinkItemUse(bot, now)
+        return
     end
 
     if now >= (bot.next_lane_change or 0) then
@@ -1477,8 +1625,12 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
         st.yaw = yaw
         st.speed = speed
     end
-    pcall(function() unit:SetForwardVector(moveDir) end)
-    pcall(function() unit:FaceTowards(finalPos + moveDir * 256) end)
+    if controller ~= nil and controller.SetHeroFacing ~= nil then
+        pcall(function() controller:SetHeroFacing(unit, yaw) end)
+    else
+        pcall(function() unit:SetForwardVector(moveDir) end)
+        pcall(function() unit:FaceTowards(finalPos + moveDir * 256) end)
+    end
     pcall(function() unit:RemoveNoDraw() end)
     pcall(function() ResolveNPCPositions(finalPos, 96) end)
 

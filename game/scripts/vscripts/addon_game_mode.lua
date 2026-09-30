@@ -5,6 +5,7 @@ require("dotakart/hud_server")
 require("dotakart/auto_drive")
 require("dotakart/camera_server")
 require("dotakart/kart_controller")
+require("dotakart/miner_system")
 require("dotakart/item_system")
 require("dotakart/ai/public_ai")
 
@@ -18,6 +19,11 @@ DOTA_KART_USE_NETTABLES = false
 
 -- Liga camera chase estilo Mario Kart 64.
 DOTA_KART_MK64_CAMERA = true
+
+-- FIX72: aumenta a faixa vertical da camera/render para pista estilo kart.
+-- SetCameraZRange é aplicado no GameModeEntity; r_farz/Hammer Far Z Clip continuam sendo alternativas do engine/mapa.
+DOTA_KART_CAMERA_Z_MIN = 0
+DOTA_KART_CAMERA_Z_MAX = 12000
 
 -- Liga controle manual W/S/A/D/T.
 DOTA_KART_MANUAL_CONTROLS = true
@@ -55,44 +61,86 @@ DOTA_KART_PUBLIC_AI_DEBUG = false
 DOTA_KART_PUBLIC_AI_USE_REAL_HERO_BOTS = true
 DOTA_KART_PUBLIC_AI_VISUAL_PROXY = false
 
--- Heróis/karts possíveis para bots. A IA sorteia depois que humanos escolherem,
--- tentando evitar repetir heróis já usados por humanos.
-DOTA_KART_AI_HERO_POOL = {
-    "npc_dota_hero_pudge",
-    "npc_dota_hero_tusk",
+-- FIX84: oito pilotos oficiais do DotA Kart, estilo seleção fechada de Mario Kart 64.
+-- Humanos e IA pública devem usar somente estes heróis base.
+DOTA_KART_KART_HERO_POOL = {
+    -- FIX88: somente Invoker usa herói custom agora, porque ele já tem VMDL custom pronto.
+    -- Os outros pilotos voltam para os heróis padrão até você criar os modelos 3D custom deles.
+    "npc_dota_hero_dotakart_invoker",
     "npc_dota_hero_brewmaster",
-    "npc_dota_hero_kunkka",
-    "npc_dota_hero_faceless_void",
-    "npc_dota_hero_phantom_assassin",
-    "npc_dota_hero_chaos_knight",
-    "npc_dota_hero_spirit_breaker",
+    "npc_dota_hero_tinker",
+    "npc_dota_hero_lina",
+    "npc_dota_hero_pudge",
+    "npc_dota_hero_tiny",
     "npc_dota_hero_mirana",
-    "npc_dota_hero_vengefulspirit",
-    "npc_dota_hero_venomancer",
-    "npc_dota_hero_lich",
-    "npc_dota_hero_invoker",
-    "npc_dota_hero_bounty_hunter",
-    "npc_dota_hero_rattletrap"
+    "npc_dota_hero_juggernaut"
 }
 
--- FIX69: tabela legada mantida apenas para precache defensivo.
--- A IA publica NAO usa mais SetModel/prop_dynamic; cada bot usa o modelo nativo do heroi real.
+-- Mapeamento só para heróis que realmente possuem uma versão custom DotA Kart.
+DOTA_KART_KART_BASE_HERO = {
+    npc_dota_hero_dotakart_invoker = "npc_dota_hero_invoker"
+}
+
+-- Se o jogador escolher Invoker base por cache/bug da seleção, substitui pelo Invoker Kart custom.
+-- Os outros heróis não são convertidos para custom enquanto não houver VMDL custom pronto.
+DOTA_KART_BASE_TO_CUSTOM_HERO = {
+    npc_dota_hero_invoker = "npc_dota_hero_dotakart_invoker"
+}
+
+DOTA_KART_KART_HERO_NAMES = {
+    npc_dota_hero_dotakart_invoker = "Invoker",
+    npc_dota_hero_invoker = "Invoker",
+    npc_dota_hero_brewmaster = "Brewmaster",
+    npc_dota_hero_tinker = "Tinker",
+    npc_dota_hero_lina = "Lina",
+    npc_dota_hero_pudge = "Pudge",
+    npc_dota_hero_tiny = "Tiny",
+    npc_dota_hero_mirana = "Mirana",
+    npc_dota_hero_juggernaut = "Juggernaut"
+}
+
+-- Modelos custom de kart prontos. Por enquanto, só o Invoker usa VMDL custom.
+DOTA_KART_CUSTOM_KART_MODELS = {
+    npc_dota_hero_dotakart_invoker = "models/invoker/invoker_kart.vmdl",
+    -- FIX104: IA usa Invoker base integrado ao Dota para não quebrar spawn/controle,
+    -- mas recebe o mesmo modelo custom visual.
+    npc_dota_hero_invoker = "models/invoker/invoker_kart.vmdl"
+}
+
+DOTA_KART_CUSTOM_KART_MODEL_SCALE = {
+    npc_dota_hero_dotakart_invoker = 2.0,
+    npc_dota_hero_invoker = 2.0
+}
+
+-- Exceções visuais somente para o modelo custom do Invoker.
+-- Não muda a orientação dos heróis padrão.
+DOTA_KART_CUSTOM_KART_FACING_YAW_OFFSET = {
+    npc_dota_hero_dotakart_invoker = -90,
+    npc_dota_hero_invoker = -90
+}
+
+DOTA_KART_CUSTOM_KART_GROUND_Z_OFFSET = {
+    npc_dota_hero_dotakart_invoker = 72,
+    npc_dota_hero_invoker = 72
+}
+
+-- Fallback apenas para o Invoker custom; os heróis padrão mantêm os wearables/modelos normais.
+DOTA_KART_HIDE_DEFAULT_HERO_WEARABLES_FOR_CUSTOM_KARTS = true
+DOTA_KART_REMOVE_DEFAULT_HERO_WEARABLES_FOR_CUSTOM_KARTS = false
+
+-- A IA pública usa exatamente a mesma lista permitida para jogadores humanos.
+DOTA_KART_AI_HERO_POOL = DOTA_KART_KART_HERO_POOL
+
+-- Tabela de precache defensivo; só Invoker tem modelo custom por enquanto.
 DOTA_KART_AI_HERO_MODELS = {
-    npc_dota_hero_rattletrap = "models/heroes/rattletrap/rattletrap.vmdl",
-    npc_dota_hero_pudge = "models/heroes/pudge/pudge.vmdl",
-    npc_dota_hero_tusk = "models/heroes/tuskarr/tuskarr.vmdl",
+    npc_dota_hero_dotakart_invoker = "models/invoker/invoker_kart.vmdl",
     npc_dota_hero_brewmaster = "models/heroes/brewmaster/brewmaster.vmdl",
-    npc_dota_hero_kunkka = "models/heroes/kunkka/kunkka.vmdl",
-    npc_dota_hero_faceless_void = "models/heroes/faceless_void/faceless_void.vmdl",
-    npc_dota_hero_phantom_assassin = "models/heroes/phantom_assassin/phantom_assassin.vmdl",
-    npc_dota_hero_chaos_knight = "models/heroes/chaos_knight/chaos_knight.vmdl",
-    npc_dota_hero_spirit_breaker = "models/heroes/spirit_breaker/spirit_breaker.vmdl",
+    npc_dota_hero_tinker = "models/heroes/tinker/tinker.vmdl",
+    npc_dota_hero_lina = "models/heroes/lina/lina.vmdl",
+    npc_dota_hero_pudge = "models/heroes/pudge/pudge.vmdl",
+    npc_dota_hero_tiny = "models/heroes/tiny/tiny_01/tiny_01.vmdl",
     npc_dota_hero_mirana = "models/heroes/mirana/mirana.vmdl",
-    npc_dota_hero_vengefulspirit = "models/heroes/vengeful/vengeful.vmdl",
-    npc_dota_hero_venomancer = "models/heroes/venomancer/venomancer.vmdl",
-    npc_dota_hero_lich = "models/heroes/lich/lich.vmdl",
-    npc_dota_hero_invoker = "models/heroes/invoker/invoker.vmdl",
-    npc_dota_hero_bounty_hunter = "models/heroes/bounty_hunter/bounty_hunter.vmdl"
+    npc_dota_hero_juggernaut = "models/heroes/juggernaut/juggernaut.vmdl"
 }
 
 if CAddonTemplateGameMode == nil then
@@ -100,8 +148,18 @@ if CAddonTemplateGameMode == nil then
 end
 
 function Precache(context)
+    -- FIX100: Castle-Fight usa um arquivo canônico em soundevents/game_sounds_custom.vsndevts.
+    -- Dota/Source2 carrega melhor soundevents custom quando o evento existe nesse arquivo
+    -- e ele foi recompilado para game/.../soundevents/game_sounds_custom.vsndevts_c.
+    PrecacheResource("soundfile", "soundevents/game_sounds_custom.vsndevts", context)
+    PrecacheResource("soundfile", "soundevents/soundevents_addon.vsndevts", context)
+    PrecacheResource("soundfile", "soundevents/dotakart_announcer.vsndevts", context)
+
     -- Caixa de item DotA Kart / Mario Kart style.
     PrecacheResource("model", "models/gameplay/breakingcrate_dest.vmdl", context)
+
+    -- FIX115: miner workers on the mines map use the Pitmouse Fraternity Axe.
+    PrecacheResource("model", "models/items/meepo/ti8_meepo_pitmouse_fraternity_weapon/ti8_meepo_pitmouse_fraternity_weapon.vmdl", context)
 
     -- FIX24/FIX59: AutoBot/IA publica precisam estar precached para os modelos carregarem.
     PrecacheUnitByNameSync("npc_dota_hero_rattletrap", context)
@@ -134,6 +192,41 @@ function Precache(context)
     PrecacheResource("particle", "particles/units/heroes/hero_lich/lich_frost_armor_c.vpcf", context)
     PrecacheResource("particle", "particles/units/heroes/hero_lich/lich_frost_armor_ice.vpcf", context)
     PrecacheResource("particle", "particles/units/heroes/hero_lich/lich_frost_armor_ring.vpcf", context)
+    -- FIX108: Frost Shield replacement + Battle Hunger + X Marks the Spot.
+    PrecacheResource("particle", "particles/units/heroes/hero_lich/lich_chain_frost_.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_lich/lich_chain_frost_explode.vpcf", context)
+    -- FIX113: anel Ice Age adicional em cada pulso do Frost Shield.
+    PrecacheResource("particle", "particles/units/heroes/hero_lich/lich_ice_age_dmg_aoe_ring.vpcf", context)
+    -- FIX110: visual padrao de slow/frost aplicado nas vitimas do pulso.
+    PrecacheResource("particle", "particles/generic_gameplay/generic_slowed_cold.vpcf", context)
+    PrecacheResource("particle", "particles/status_fx/status_effect_frost_lich.vpcf", context)
+    PrecacheResource("particle", "particles/econ/items/axe/axe_cinder/axe_cinder_battle_hunger_start_fire.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_axe/axe_battle_hunger.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_axe/axe_battle_hunger_start.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_kunkka/kunkka_spell_x_spot_line.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_kunkka/kunkka_spell_x_spot_return.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_kunkka/kunkka_spell_x_spot.vpcf", context)
+    -- FIX117: Doppelwalk / Shukuchi / Crystal Clone.
+    PrecacheResource("particle", "particles/units/heroes/hero_phantom_lancer/phantomlancer_doppelwalk.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_weaver/weaver_shukuchi.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_weaver/weaver_shukuchi_damage.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_weaver/weaver_shukuchi_damage_arc.vpcf", context)
+    PrecacheResource("model", "models/heroes/crystal_maiden/crystal_maiden_deathsim.vmdl", context)
+    PrecacheResource("particle", "particles/status_fx/crystal_maiden_crystal_clone.vpcf", context)
+    -- FIX118: Frostbite visual completo aplicado aos karts atingidos pelo Crystal Clone.
+    PrecacheResource("particle", "particles/units/heroes/hero_crystalmaiden/maiden_shard_frostbite_base.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_crystalmaiden/maiden_shard_frostbite_vapor.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_crystalmaiden/maiden_shard_frostbite_mist.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_crystalmaiden/maiden_frostbite_buff.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_crystalmaiden/maiden_crystal_clone_end.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_crystalmaiden/maiden_crystal_clone_end_snow_burst.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_crystalmaiden/maiden_crystal_clone_end_aoe_shockwave_ring.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_crystalmaiden/maiden_crystal_clone_end_blast.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_crystalmaiden/maiden_crystal_clone_end_shock.vpcf", context)
+
+    -- FIX111: Torrent Storm.
+    PrecacheResource("particle", "particles/units/heroes/hero_kunkka/kunkka_spell_torrent_wave.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_kunkka/kunkka_spell_torrent_splash_scepter.vpcf", context)
     PrecacheResource("particle", "particles/units/heroes/hero_lich/lich_chain_frost.vpcf", context)
     PrecacheResource("particle", "particles/econ/items/lich/lich_ti8_immortal_arms/lich_ti8_chain_frost_explode.vpcf", context)
     PrecacheResource("particle", "particles/units/heroes/hero_invoker/invoker_tornado.vpcf", context)
@@ -160,6 +253,22 @@ function Precache(context)
     PrecacheResource("particle", "particles/units/heroes/hero_invoker/invoker_ice_wall_snow_ground.vpcf", context)
     PrecacheResource("particle", "particles/units/heroes/hero_invoker/invoker_ice_wall_icicle.vpcf", context)
     PrecacheResource("particle", "particles/units/heroes/hero_invoker/invoker_ice_wall_hero_shatter.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_sandking/sandking_burrowstrike_ground.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_sandking/sandking_burrowstrike_low.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_sandking/sandking_burrowstrike_mid.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_treant/treant_bramble_root_model.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_treant/treant_bramble_root.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_ogre_magi/ogre_magi_bloodlust_buff_symbol.vpcf", context)
+    -- FIX92: Spectral Dagger particles from the real Spectre asset set.
+    PrecacheResource("particle", "particles/units/heroes/hero_spectre/spectre_spectral_dagger.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_spectre/spectre_spectral_dagger_tracking.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_spectre/spectre_spectral_dagger_fallback_mid.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_spectre/spectre_spectral_dagger_glow.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_spectre/spectre_shadow_path.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_spectre/spectre_shadow_path_owner.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_spectre/spectre_shadow_path_owner_fallback_mid.vpcf", context)
+    PrecacheResource("particle", "particles/econ/items/spectre/spectre_transversant/spectre_transversant_spectral_dagger_v2_path.vpcf", context)
+    PrecacheResource("particle", "particles/econ/items/spectre/spectre_transversant/spectre_transversant_spectral_dagger_v2_path_front.vpcf", context)
     PrecacheResource("model", "models/heroes/rattletrap/rattletrap_cog.vmdl", context)
 
     -- Raw VSNDs pedidos + arquivos de eventos de som dos herois/itens.
@@ -198,6 +307,15 @@ function Precache(context)
     PrecacheResource("soundfile", "sounds/weapons/hero/lich/chain_frost_impact_hero03.vsnd", context)
     PrecacheResource("soundfile", "sounds/weapons/hero/lich/chain_frost_impact_lf.vsnd", context)
     PrecacheResource("soundfile", "sounds/weapons/hero/lich/ice_age_target.vsnd", context)
+    -- FIX111: sons verificados do Frost Shield/Torrent.
+    PrecacheResource("soundfile", "sounds/weapons/hero/lich/impact01.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/lich/impact02.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/kunkka/ability_pre_geyser.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/kunkka/ability_geyser.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/axe/battle_hunger.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/kunkka/x_mark_target.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/kunkka/xmark_target_movement.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/kunkka/x_snapback.vsnd", context)
     PrecacheResource("soundfile", "sounds/weapons/hero/invoker/tornado_cast.vsnd", context)
     PrecacheResource("soundfile", "sounds/weapons/hero/invoker/tornado.vsnd", context)
     PrecacheResource("soundfile", "sounds/weapons/hero/tusk/ice_shards_cast.vsnd", context)
@@ -211,10 +329,26 @@ function Precache(context)
     PrecacheResource("soundfile", "sounds/weapons/hero/bounty_hunter/shadow_walk.vsnd", context)
     PrecacheResource("soundfile", "sounds/weapons/hero/invoker/ice_wall_slow02.vsnd", context)
     PrecacheResource("soundfile", "sounds/weapons/hero/crystal_maiden/freezing_field.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/sand_king/sand_king_burrow_attack.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/treant/overgrowth_target02.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/treant/natures_guise.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/ogre_magi/bloodlust_target.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/ogre_magi/multicast01.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/ogre_magi/multicast02.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/ogre_magi/multicast03.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/spectre/dagger_cast.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/spectre/dagger_impact.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/alchemist/unstable_concoction_fuse.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/alchemist/unstable_concoction_throw.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/alchemist/unstable_concoction_stun01.vsnd", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_alchemist/alchemist_unstable_concoction_projectile.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_alchemist/alchemist_unstable_concoction_projectile_explosion.vpcf", context)
 
-    -- FIX44: custom announcer/lap soundevents.
-    -- Coloque os MP3 em content/dota_addons/dota_kart/sounds e recompile o soundevent.
+    -- FIX44/FIX103: custom announcer/lap/engine soundevents.
+    -- Não precachear raw .vsnd custom diretamente aqui; o raw fica referenciado dentro do KV3 .vsndevts.
+    -- EmitSound/Game.EmitSound recebem o nome do soundevent, ex: dotakart_engine_idle.
     PrecacheResource("soundfile", "soundevents/dotakart_announcer.vsndevts", context)
+
     -- FIX50: countdown/start sounds.
     PrecacheResource("soundfile", "sounds/vo/announcer/ann_custom_countdown_01.vsnd", context)
     PrecacheResource("soundfile", "sounds/vo/announcer/ann_custom_countdown_02.vsnd", context)
@@ -236,11 +370,18 @@ function Precache(context)
     PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_spirit_breaker.vsndevts", context)
     PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_venomancer.vsndevts", context)
     PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_lich.vsndevts", context)
+    PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_axe.vsndevts", context)
+    PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_kunkka.vsndevts", context)
     PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_invoker.vsndevts", context)
     PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_tusk.vsndevts", context)
+    PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_sandking.vsndevts", context)
+    PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_treant.vsndevts", context)
+    PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_ogre_magi.vsndevts", context)
     PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_rubick.vsndevts", context)
     PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_chaos_knight.vsndevts", context)
     PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_bounty_hunter.vsndevts", context)
+    PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_alchemist.vsndevts", context)
+    PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_spectre.vsndevts", context)
 end
 
 function Activate()
@@ -253,13 +394,21 @@ function CAddonTemplateGameMode:InitGameMode()
 
     self.raceStarted = false
     self.autoDriveStarted = false
+    self.dotakartSetupDurationSeconds = 80
+    self.dotakartSetupTimerStarted = false
+    self.dotakartSetupFinalized = false
+    self.dotakartSetupDeadline = nil
+    self.dotakartHeroSelectionSeen = false
+    self.dotakartHeroAutoPickStarted = false
+    self._dotakartAutoRandomRequested = {}
 
-    -- Acelera o fluxo para testes no Workshop Tools.
-    GameRules:SetHeroSelectionTime(5)
+    -- FIX119: GameSetup tem seu proprio timer de 80s; depois disso, jogadores
+    -- recebem 60s para escolher um dos oito herois/karts oficiais.
+    GameRules:SetHeroSelectionTime(60)
     GameRules:SetStrategyTime(0)
     GameRules:SetShowcaseTime(0)
     GameRules:SetPreGameTime(3)
-    GameRules:SetSameHeroSelectionEnabled(true)
+    GameRules:SetSameHeroSelectionEnabled(false)
     self:ConfigureDotaKartRules()
     -- FIX60: mantém a seleção padrão de equipes ativa. A UI DotA Kart é apenas um painel pequeno
     -- na tela GameSetup; o host configura e todos continuam escolhendo equipe/herói normalmente.
@@ -286,6 +435,11 @@ function CAddonTemplateGameMode:InitGameMode()
 
     GameRules.DotaKartController = DotaKartController
     DotaKartController:Init(DotaKartHUD)
+
+    -- FIX115: map-specific mine workers; system is a no-op outside the mines map.
+    GameRules.DotaKartMinerSystem = DotaKartMinerSystem
+    DotaKartMinerSystem:Init(DotaKartController)
+    DotaKartMinerSystem:Start()
 
     GameRules.DotaKartItemSystem = DotaKartItemSystem
     DotaKartItemSystem:Init(DotaKartHUD, DotaKartController)
@@ -441,6 +595,33 @@ function CAddonTemplateGameMode:ConfigureDotaKartRules()
         end
     end
 
+    -- FIX72: melhora alcance de visibilidade/render para a câmera alta MK64.
+    -- SetCameraZRange é a opção VScript; r_farz e Far Z Clip do env_fog_controller continuam sendo alternativas do motor/mapa.
+    local mode = GameRules:GetGameModeEntity()
+    local minZ = tonumber(DOTA_KART_CAMERA_Z_MIN or 0) or 0
+    local maxZ = tonumber(DOTA_KART_CAMERA_Z_MAX or 12000) or 12000
+    if mode ~= nil and mode.SetCameraZRange ~= nil then
+        local ok = pcall(function() mode:SetCameraZRange(minZ, maxZ) end)
+        if ok then
+            print("[DotA Kart] FIX72 CameraZRange aplicado min=" .. tostring(minZ) .. " max=" .. tostring(maxZ))
+        else
+            print("[DotA Kart] FIX72 CameraZRange falhou; ajuste r_farz/env_fog_controller no mapa se necessario.")
+        end
+    end
+
+    -- FIX72: se existir env_fog_controller no mapa, tenta aumentar tambem o Far Z Clip dele.
+    -- Isso ajuda quando o limite real vem do fog controller/Hammer, não apenas da camera.
+    if Entities ~= nil and DoEntFireByInstanceHandle ~= nil then
+        local fog = Entities:FindByClassname(nil, "env_fog_controller")
+        local count = 0
+        while fog ~= nil do
+            count = count + 1
+            pcall(function() DoEntFireByInstanceHandle(fog, "SetFarZ", tostring(math.floor(maxZ)), 0, nil, nil) end)
+            fog = Entities:FindByClassname(fog, "env_fog_controller")
+        end
+        if count > 0 then print("[DotA Kart] FIX72 env_fog_controller SetFarZ=" .. tostring(math.floor(maxZ)) .. " count=" .. tostring(count)) end
+    end
+
     print("[DotA Kart] Regras FIX26: max_players=" .. tostring(self.maxPlayers) .. ", FFA=" .. tostring(DOTA_KART_FREE_FOR_ALL) .. ", fog=off")
 end
 
@@ -558,6 +739,8 @@ function CAddonTemplateGameMode:AppendSetupState(payload)
     payload = payload or {}
     payload.max_players = self.maxPlayers or DOTA_KART_MAX_PLAYERS or 8
     payload.host_player_id = 0
+    payload.setup_remaining = math.ceil(self:GetDotaKartSetupRemainingSeconds())
+    payload.setup_duration = tonumber(self.dotakartSetupDurationSeconds or 80) or 80
 
     for slot = 0, (self.maxPlayers or 8) - 1 do
         payload["team" .. tostring(slot)] = self:GetRaceTeamForSlot(slot) or -1
@@ -680,6 +863,75 @@ function CAddonTemplateGameMode:EnsureConnectedPlayersHaveSetupTeams()
     end
 end
 
+function CAddonTemplateGameMode:GetDotaKartSetupRemainingSeconds()
+    if self.dotakartSetupFinalized == true then return 0 end
+    local duration = tonumber(self.dotakartSetupDurationSeconds or 80) or 80
+    if self.dotakartSetupTimerStarted ~= true or self.dotakartSetupDeadline == nil then
+        return duration
+    end
+    local left = (tonumber(self.dotakartSetupDeadline) or 0) - GameRules:GetGameTime()
+    if left < 0 then left = 0 end
+    return left
+end
+
+function CAddonTemplateGameMode:FinalizeDotaKartGameSetup(source, keys)
+    if self.dotakartSetupFinalized == true then return false end
+    keys = keys or {}
+
+    if GameRules.DotaKartPublicAI ~= nil then
+        -- No timeout, os valores atuais em settings ja sao exatamente o que estava selecionado.
+        -- No confirm manual, aceita tambem o ultimo payload do host.
+        if keys.laps ~= nil then GameRules.DotaKartPublicAI:SetConfiguredLaps(tonumber(keys.laps) or 3, tostring(source or "setup")) end
+        if keys.bot_count ~= nil then GameRules.DotaKartPublicAI:SetConfiguredBotCount(tonumber(keys.bot_count), tostring(source or "setup")) end
+        GameRules.DotaKartPublicAI:LockHostSetup()
+    end
+
+    self:EnsureConnectedPlayersHaveSetupTeams()
+    self.dotakartSetupFinalized = true
+    self.dotakartSetupDeadline = GameRules:GetGameTime()
+    self:BroadcastSetupState()
+
+    print("[DotA Kart] GameSetup FIX119 finalizado source=" .. tostring(source or "unknown") .. ". Avancando para selecao de heroi.")
+    if GameRules.FinishCustomGameSetup ~= nil then
+        local ok, err = pcall(function() GameRules:FinishCustomGameSetup() end)
+        if not ok then print("[DotA Kart] FinishCustomGameSetup falhou: " .. tostring(err)) end
+    elseif GameRules.SetCustomGameSetupTimeout ~= nil then
+        pcall(function() GameRules:SetCustomGameSetupTimeout(0) end)
+    elseif GameRules.SetCustomGameSetupAutoLaunchDelay ~= nil then
+        pcall(function() GameRules:SetCustomGameSetupAutoLaunchDelay(0) end)
+        pcall(function() GameRules:EnableCustomGameSetupAutoLaunch(true) end)
+    end
+    return true
+end
+
+function CAddonTemplateGameMode:StartDotaKartGameSetupCountdown()
+    if DOTA_KART_PUBLIC_SETUP_SCREEN ~= true then return false end
+    if self.dotakartSetupTimerStarted == true or self.dotakartSetupFinalized == true then return false end
+
+    local duration = tonumber(self.dotakartSetupDurationSeconds or 80) or 80
+    self.dotakartSetupTimerStarted = true
+    self.dotakartSetupDeadline = GameRules:GetGameTime() + duration
+    self._dotakartLastSetupSecond = nil
+    self:BroadcastSetupState()
+    print("[DotA Kart] GameSetup FIX119 countdown iniciado: " .. tostring(duration) .. "s")
+
+    GameRules:GetGameModeEntity():SetContextThink("DotaKartGameSetupCountdown_FIX119", function()
+        if self.dotakartSetupFinalized == true then return nil end
+        local left = self:GetDotaKartSetupRemainingSeconds()
+        local shown = math.ceil(left)
+        if self._dotakartLastSetupSecond ~= shown then
+            self._dotakartLastSetupSecond = shown
+            self:BroadcastSetupState()
+        end
+        if left <= 0.01 then
+            self:FinalizeDotaKartGameSetup("timeout_80s", {})
+            return nil
+        end
+        return 0.20
+    end, 0.05)
+    return true
+end
+
 function CAddonTemplateGameMode:OnDotaKartSetupConfirm(eventSourceIndex, keys)
     keys = keys or {}
     local playerID = self:ResolveSetupPlayerID(eventSourceIndex, keys)
@@ -691,25 +943,123 @@ function CAddonTemplateGameMode:OnDotaKartSetupConfirm(eventSourceIndex, keys)
         return
     end
 
-    if GameRules.DotaKartPublicAI ~= nil then
-        if keys.laps ~= nil then GameRules.DotaKartPublicAI:SetConfiguredLaps(tonumber(keys.laps) or 3, "setup_confirm") end
-        if keys.bot_count ~= nil then GameRules.DotaKartPublicAI:SetConfiguredBotCount(tonumber(keys.bot_count), "setup_confirm") end
-        GameRules.DotaKartPublicAI:LockHostSetup()
+    self:FinalizeDotaKartGameSetup("host_confirm", keys)
+end
+
+function CAddonTemplateGameMode:IsHumanPlayerForAutoPick(playerID)
+    playerID = tonumber(playerID) or -1
+    if playerID < 0 or not self:IsSetupPlayerConnected(playerID) then return false end
+    if PlayerResource ~= nil and PlayerResource.IsFakeClient ~= nil then
+        local fake = false
+        pcall(function() fake = PlayerResource:IsFakeClient(playerID) == true end)
+        if fake then return false end
+    end
+    return true
+end
+
+function CAddonTemplateGameMode:GetSelectedKartHeroNameForPlayer(playerID)
+    local heroName = ""
+    if PlayerResource ~= nil and PlayerResource.GetSelectedHeroName ~= nil then
+        pcall(function() heroName = tostring(PlayerResource:GetSelectedHeroName(playerID) or "") end)
+    end
+    if heroName == "" and PlayerResource ~= nil and PlayerResource.GetSelectedHeroEntity ~= nil then
+        local hero = nil
+        pcall(function() hero = PlayerResource:GetSelectedHeroEntity(playerID) end)
+        if hero ~= nil and not hero:IsNull() then pcall(function() heroName = tostring(hero:GetUnitName() or "") end) end
+    end
+    if DOTA_KART_BASE_TO_CUSTOM_HERO ~= nil and DOTA_KART_BASE_TO_CUSTOM_HERO[heroName] ~= nil then
+        heroName = DOTA_KART_BASE_TO_CUSTOM_HERO[heroName]
+    end
+    return heroName
+end
+
+function CAddonTemplateGameMode:GetRandomAvailableKartHeroForPlayer(playerID)
+    local used = {}
+    for pid = 0, (self.maxPlayers or 8) - 1 do
+        if pid ~= playerID and self:IsHumanPlayerForAutoPick(pid) then
+            local name = self:GetSelectedKartHeroNameForPlayer(pid)
+            if name ~= "" then used[name] = true end
+        end
     end
 
-    self:EnsureConnectedPlayersHaveSetupTeams()
-    self:BroadcastSetupState()
-
-    print("[DotA Kart] GameSetup: host confirmou. Avancando para selecao de heroi.")
-    if GameRules.FinishCustomGameSetup ~= nil then
-        local ok, err = pcall(function() GameRules:FinishCustomGameSetup() end)
-        if not ok then print("[DotA Kart] FinishCustomGameSetup falhou: " .. tostring(err)) end
-    elseif GameRules.SetCustomGameSetupTimeout ~= nil then
-        pcall(function() GameRules:SetCustomGameSetupTimeout(0) end)
-    elseif GameRules.SetCustomGameSetupAutoLaunchDelay ~= nil then
-        pcall(function() GameRules:SetCustomGameSetupAutoLaunchDelay(0) end)
-        pcall(function() GameRules:EnableCustomGameSetupAutoLaunch(true) end)
+    local available = {}
+    for _, name in ipairs(DOTA_KART_KART_HERO_POOL or {}) do
+        if name ~= nil and name ~= "" and used[name] ~= true then table.insert(available, name) end
     end
+    if #available <= 0 then
+        for _, name in ipairs(DOTA_KART_KART_HERO_POOL or {}) do table.insert(available, name) end
+    end
+    if #available <= 0 then return "npc_dota_hero_dotakart_invoker" end
+    local index = RandomInt ~= nil and RandomInt(1, #available) or math.random(1, #available)
+    return available[index]
+end
+
+function CAddonTemplateGameMode:AutoPickMissingKartHeroes()
+    local missing = 0
+    for playerID = 0, (self.maxPlayers or 8) - 1 do
+        if self:IsHumanPlayerForAutoPick(playerID) then
+            local selected = self:GetSelectedKartHeroNameForPlayer(playerID)
+            if selected == "" then
+                missing = missing + 1
+                -- Primeiro deixa o proprio Dota randomizar dentro do herolist fechado do DotA Kart.
+                -- O fallback ReplaceHeroWith so ocorre na tentativa seguinte para evitar criar
+                -- um segundo heroi caso MakeRandomHeroSelection conclua de forma assincrona.
+                self._dotakartAutoRandomRequested = self._dotakartAutoRandomRequested or {}
+                local requested = self._dotakartAutoRandomRequested[playerID] == true
+                if not requested and PlayerResource ~= nil and PlayerResource.MakeRandomHeroSelection ~= nil then
+                    pcall(function() PlayerResource:MakeRandomHeroSelection(playerID) end)
+                    self._dotakartAutoRandomRequested[playerID] = true
+                else
+                    selected = self:GetSelectedKartHeroNameForPlayer(playerID)
+                    if selected == "" and PlayerResource ~= nil and PlayerResource.ReplaceHeroWith ~= nil then
+                        local heroName = self:GetRandomAvailableKartHeroForPlayer(playerID)
+                        local ok, newHero = pcall(function() return PlayerResource:ReplaceHeroWith(playerID, heroName, 0, 0) end)
+                        if ok and newHero ~= nil and not newHero:IsNull() then
+                            selected = heroName
+                            pcall(function() self:ApplyCustomKartHeroModel(newHero) end)
+                        end
+                    end
+                end
+                print("[DotA Kart] FIX119 auto-pick player=" .. tostring(playerID) .. " hero=" .. tostring(selected))
+            end
+        end
+    end
+    return missing
+end
+
+function CAddonTemplateGameMode:EnsureHeroSelectionKartsOnTrack()
+    if DotaKartHUD ~= nil and (DotaKartHUD.trackWorldPoints == nil or #DotaKartHUD.trackWorldPoints < 1) then
+        pcall(function() DotaKartHUD:BuildTrackPathFromEntities("dk_track_", 1024, true, 512) end)
+    end
+    if DotaKartController ~= nil then
+        pcall(function() DotaKartController:ApplyToExistingHeroes() end)
+        pcall(function() DotaKartController:TeleportAllToTrackStart() end)
+        pcall(function() DotaKartController:HardStopAll() end)
+        if not self.raceStarted then pcall(function() DotaKartController:SetEnabled(false) end) end
+    end
+end
+
+function CAddonTemplateGameMode:StartPostHeroSelectionAutoPick()
+    if self.dotakartHeroAutoPickStarted == true then return end
+    self.dotakartHeroAutoPickStarted = true
+    local attempts = 0
+    GameRules:GetGameModeEntity():SetContextThink("DotaKartHeroAutoPick_FIX119", function()
+        attempts = attempts + 1
+        self:AutoPickMissingKartHeroes()
+        self:EnsureHeroSelectionKartsOnTrack()
+
+        local stillMissing = 0
+        for playerID = 0, (self.maxPlayers or 8) - 1 do
+            if self:IsHumanPlayerForAutoPick(playerID) and self:GetSelectedKartHeroNameForPlayer(playerID) == "" then
+                stillMissing = stillMissing + 1
+            end
+        end
+        if stillMissing <= 0 or attempts >= 16 then
+            self:EnsureHeroSelectionKartsOnTrack()
+            return nil
+        end
+        return 0.25
+    end, 0.02)
 end
 
 function CAddonTemplateGameMode:OnPlayerConnectFull(keys)
@@ -847,6 +1197,222 @@ function CAddonTemplateGameMode:RemoveAutoBots()
     print("[DotA Kart] AutoBots removidos.")
 end
 
+
+
+
+function CAddonTemplateGameMode:GetBaseHeroNameForKartHero(heroName)
+    heroName = tostring(heroName or "")
+    if DOTA_KART_KART_BASE_HERO ~= nil and DOTA_KART_KART_BASE_HERO[heroName] ~= nil then
+        return DOTA_KART_KART_BASE_HERO[heroName]
+    end
+    return heroName
+end
+
+function CAddonTemplateGameMode:GetCustomKartHeroForBaseHero(heroName)
+    heroName = tostring(heroName or "")
+    if DOTA_KART_BASE_TO_CUSTOM_HERO ~= nil and DOTA_KART_BASE_TO_CUSTOM_HERO[heroName] ~= nil then
+        return DOTA_KART_BASE_TO_CUSTOM_HERO[heroName]
+    end
+    return heroName
+end
+
+function CAddonTemplateGameMode:GetCustomKartModelScale(heroName)
+    heroName = tostring(heroName or "")
+    local baseHero = self:GetBaseHeroNameForKartHero(heroName)
+    local scale = 1.0
+    if DOTA_KART_CUSTOM_KART_MODEL_SCALE ~= nil then
+        scale = tonumber(DOTA_KART_CUSTOM_KART_MODEL_SCALE[heroName] or DOTA_KART_CUSTOM_KART_MODEL_SCALE[baseHero] or 1.0) or 1.0
+    end
+    if scale <= 0 then scale = 1.0 end
+    return scale
+end
+
+function CAddonTemplateGameMode:IsCustomKartWearableChild(child, heroName)
+    if child == nil or child:IsNull() then return false end
+    local className = ""
+    pcall(function() className = tostring(child:GetClassname() or "") end)
+    className = string.lower(className or "")
+
+    if string.find(className, "wearable", 1, true) ~= nil then return true end
+    if string.find(className, "dota_item", 1, true) ~= nil then return true end
+
+    -- Fallback defensivo para os cosméticos do Invoker que podem vir como props/children.
+    if heroName == "npc_dota_hero_invoker" or heroName == "npc_dota_hero_dotakart_invoker" then
+        local modelName = ""
+        pcall(function()
+            if child.GetModelName ~= nil then modelName = tostring(child:GetModelName() or "") end
+        end)
+        modelName = string.lower(modelName or "")
+        if string.find(modelName, "models/heroes/invoker", 1, true) ~= nil then return true end
+        if string.find(modelName, "models/items/invoker", 1, true) ~= nil then return true end
+    end
+
+    return false
+end
+
+function CAddonTemplateGameMode:HideDefaultHeroWearablesForCustomKart(unit, heroName)
+    if DOTA_KART_HIDE_DEFAULT_HERO_WEARABLES_FOR_CUSTOM_KARTS ~= true then return 0 end
+    if unit == nil or unit:IsNull() then return 0 end
+    heroName = tostring(heroName or unit:GetUnitName() or "")
+    -- FIX88: só esconde wearables quando este herói possui modelo custom configurado.
+    -- Heróis padrão (Brewmaster, Tinker, Lina, Pudge, Tiny, Mirana, Juggernaut) não devem ser tocados.
+    local baseHeroForWearableCheck = self.GetBaseHeroNameForKartHero and self:GetBaseHeroNameForKartHero(heroName) or heroName
+    local hasCustomModel = DOTA_KART_CUSTOM_KART_MODELS ~= nil and (DOTA_KART_CUSTOM_KART_MODELS[heroName] ~= nil or DOTA_KART_CUSTOM_KART_MODELS[baseHeroForWearableCheck] ~= nil)
+    if hasCustomModel ~= true then return 0 end
+    local removed = 0
+
+    local function hideChild(child)
+        if child == nil or child:IsNull() then return end
+        if not self:IsCustomKartWearableChild(child, heroName) then return end
+        pcall(function() child:AddNoDraw() end)
+        pcall(function() if EF_NODRAW ~= nil then child:AddEffects(EF_NODRAW) end end)
+        pcall(function() child:SetAbsOrigin(Vector(0, 0, -32000)) end)
+        if DOTA_KART_REMOVE_DEFAULT_HERO_WEARABLES_FOR_CUSTOM_KARTS == true then
+            pcall(function() UTIL_Remove(child) end)
+        end
+        removed = removed + 1
+    end
+
+    -- Método 1: filhos diretos, quando disponível.
+    local okChildren, children = pcall(function()
+        if unit.GetChildren ~= nil then return unit:GetChildren() end
+        return nil
+    end)
+    if okChildren and type(children) == "table" then
+        for _, child in pairs(children) do hideChild(child) end
+    end
+
+    -- Método 2: árvore de move children, mais compatível com wearables do Dota.
+    local okFirst, child = pcall(function()
+        if unit.FirstMoveChild ~= nil then return unit:FirstMoveChild() end
+        return nil
+    end)
+    local guard = 0
+    if okFirst then
+        while child ~= nil and guard < 128 do
+            local nextChild = nil
+            pcall(function()
+                if child.NextMovePeer ~= nil then nextChild = child:NextMovePeer() end
+            end)
+            hideChild(child)
+            child = nextChild
+            guard = guard + 1
+        end
+    end
+
+    return removed
+end
+
+function CAddonTemplateGameMode:ReapplyCustomKartHeroModel(unit, heroName, modelPath, scale)
+    if unit == nil or unit:IsNull() then return nil end
+    pcall(function() unit:SetModel(modelPath) end)
+    pcall(function() unit:SetOriginalModel(modelPath) end)
+    pcall(function() unit:SetModelScale(scale) end)
+    pcall(function() unit:RemoveNoDraw() end)
+    self:HideDefaultHeroWearablesForCustomKart(unit, heroName)
+    return nil
+end
+
+function CAddonTemplateGameMode:GetAllowedKartHeroSet()
+    if self._dotakartAllowedHeroSet ~= nil then return self._dotakartAllowedHeroSet end
+    local set = {}
+    for _, heroName in ipairs(DOTA_KART_KART_HERO_POOL or {}) do
+        if heroName ~= nil and heroName ~= "" then set[heroName] = true end
+    end
+    -- FIX104: permite aliases/base heroes usados internamente para manter fake clients/bots
+    -- estáveis. Eles continuam contando como o mesmo piloto no GameSetup/AI.
+    for customHero, baseHero in pairs(DOTA_KART_KART_BASE_HERO or {}) do
+        if customHero ~= nil and customHero ~= "" then set[customHero] = true end
+        if baseHero ~= nil and baseHero ~= "" then set[baseHero] = true end
+    end
+    for baseHero, customHero in pairs(DOTA_KART_BASE_TO_CUSTOM_HERO or {}) do
+        if baseHero ~= nil and baseHero ~= "" then set[baseHero] = true end
+        if customHero ~= nil and customHero ~= "" then set[customHero] = true end
+    end
+    self._dotakartAllowedHeroSet = set
+    return set
+end
+
+function CAddonTemplateGameMode:IsAllowedKartHeroName(heroName)
+    heroName = tostring(heroName or "")
+    local set = self:GetAllowedKartHeroSet()
+    return set[heroName] == true
+end
+
+function CAddonTemplateGameMode:GetDefaultKartHeroForPlayer(playerID)
+    local pool = DOTA_KART_KART_HERO_POOL or {}
+    if #pool <= 0 then return "npc_dota_hero_invoker" end
+    local index = ((tonumber(playerID) or 0) % #pool) + 1
+    return pool[index] or "npc_dota_hero_invoker"
+end
+
+function CAddonTemplateGameMode:ApplyCustomKartHeroModel(unit)
+    if unit == nil or unit:IsNull() then return false end
+    local heroName = unit:GetUnitName()
+    local baseHero = self:GetBaseHeroNameForKartHero(heroName)
+    pcall(function() unit.dk_kart_hero_name = baseHero end)
+    pcall(function() unit.dotakart_display_hero = baseHero end)
+    pcall(function() unit.dotakart_public_ai_hero = baseHero end)
+
+    local modelPath = nil
+    if DOTA_KART_CUSTOM_KART_MODELS ~= nil then modelPath = DOTA_KART_CUSTOM_KART_MODELS[heroName] or DOTA_KART_CUSTOM_KART_MODELS[baseHero] end
+    if modelPath == nil or modelPath == "" then return false end
+
+    -- FIX85: aplica o modelo custom no próprio herói real, escala visual e esconde
+    -- wearables/modelos padrão que o Dota adiciona por cima do custom VMDL.
+    local scale = self:GetCustomKartModelScale(heroName)
+    local ok1 = pcall(function() unit:SetModel(modelPath) end)
+    local ok2 = pcall(function() unit:SetOriginalModel(modelPath) end)
+    local ok3 = pcall(function() unit:SetModelScale(scale) end)
+    pcall(function() unit:RemoveNoDraw() end)
+    pcall(function() unit.dk_kart_custom_model = modelPath end)
+    pcall(function() unit.dk_kart_custom_model_scale = scale end)
+    if DOTA_KART_CUSTOM_KART_GROUND_Z_OFFSET ~= nil then
+        local zoff = tonumber(DOTA_KART_CUSTOM_KART_GROUND_Z_OFFSET[heroName] or DOTA_KART_CUSTOM_KART_GROUND_Z_OFFSET[baseHero] or 0) or 0
+        pcall(function() unit.dk_kart_custom_z_offset = zoff end)
+    end
+
+    local hidden = self:HideDefaultHeroWearablesForCustomKart(unit, heroName)
+
+    -- Os cosméticos/wearables podem aparecer alguns frames depois do spawn/hero selection.
+    -- Reaplica a limpeza em pequenas janelas sem tocar em HUD, itens, IA ou controle.
+    local ent = -1
+    pcall(function() ent = unit:entindex() end)
+    local mode = GameRules:GetGameModeEntity()
+    if mode ~= nil and ent ~= nil and ent >= 0 then
+        local delays = { 0.03, 0.20, 0.60, 1.20, 2.00 }
+        for i, delay in ipairs(delays) do
+            mode:SetContextThink("DotaKartCustomKartModel_FIX85_" .. tostring(ent) .. "_" .. tostring(i), function()
+                return self:ReapplyCustomKartHeroModel(unit, heroName, modelPath, scale)
+            end, delay)
+        end
+    end
+
+    print("[DotA Kart] FIX85 custom kart model aplicado: " .. tostring(heroName) .. " -> " .. tostring(modelPath) .. " scale=" .. tostring(scale) .. " hidden_children=" .. tostring(hidden))
+    return ok1 or ok2 or ok3
+end
+
+function CAddonTemplateGameMode:ReplaceInvalidKartHero(playerID, oldHero)
+    playerID = tonumber(playerID) or -1
+    if playerID < 0 then return false end
+    local oldHeroName = oldHero and oldHero:GetUnitName() or ""
+    local replacement = self:GetCustomKartHeroForBaseHero(oldHeroName)
+    if replacement == nil or replacement == oldHeroName or not self:IsAllowedKartHeroName(replacement) then
+        replacement = self:GetDefaultKartHeroForPlayer(playerID)
+    end
+    print("[DotA Kart] Hero invalido/base detectado. player=" .. tostring(playerID) .. " hero=" .. tostring(oldHeroName) .. " -> " .. tostring(replacement))
+
+    if PlayerResource ~= nil and PlayerResource.ReplaceHeroWith ~= nil then
+        local ok, newHero = pcall(function() return PlayerResource:ReplaceHeroWith(playerID, replacement, 0, 0) end)
+        if ok and newHero ~= nil and not newHero:IsNull() then
+            pcall(function() self:ApplyCustomKartHeroModel(newHero) end)
+            return true
+        end
+    end
+
+    return false
+end
+
 function CAddonTemplateGameMode:OnNPCSpawned(keys)
     local spawnedUnit = EntIndexToHScript(keys.entindex)
     if spawnedUnit == nil or spawnedUnit:IsNull() then return end
@@ -854,6 +1420,15 @@ function CAddonTemplateGameMode:OnNPCSpawned(keys)
     if spawnedUnit:IsRealHero() and not spawnedUnit:IsIllusion() then
         local playerID = spawnedUnit:GetPlayerOwnerID()
         if playerID ~= nil and playerID >= 0 then
+            local heroName = spawnedUnit:GetUnitName()
+            if not self:IsAllowedKartHeroName(heroName) then
+                if self:ReplaceInvalidKartHero(playerID, spawnedUnit) then
+                    return
+                end
+                print("[DotA Kart] AVISO: heroi fora da lista oficial registrado porque ReplaceHeroWith falhou: " .. tostring(heroName))
+            end
+
+            self:ApplyCustomKartHeroModel(spawnedUnit)
             self:AssignPlayerToFFA(playerID)
             DotaKartHUD:RegisterKart(playerID, spawnedUnit)
 
@@ -1216,13 +1791,127 @@ function CAddonTemplateGameMode:StartDotaKartRace(forceRestart, skipCountdown)
     self:SchedulePreRaceCountdownCheck(forceRestart)
 end
 
+
+function CAddonTemplateGameMode:GetAllowedKartHeroSet()
+    if self._dotakartAllowedHeroSet ~= nil then return self._dotakartAllowedHeroSet end
+    local set = {}
+    for _, heroName in ipairs(DOTA_KART_KART_HERO_POOL or {}) do
+        if heroName ~= nil and heroName ~= "" then set[heroName] = true end
+    end
+    -- FIX104: permite aliases/base heroes usados internamente para manter fake clients/bots
+    -- estáveis. Eles continuam contando como o mesmo piloto no GameSetup/AI.
+    for customHero, baseHero in pairs(DOTA_KART_KART_BASE_HERO or {}) do
+        if customHero ~= nil and customHero ~= "" then set[customHero] = true end
+        if baseHero ~= nil and baseHero ~= "" then set[baseHero] = true end
+    end
+    for baseHero, customHero in pairs(DOTA_KART_BASE_TO_CUSTOM_HERO or {}) do
+        if baseHero ~= nil and baseHero ~= "" then set[baseHero] = true end
+        if customHero ~= nil and customHero ~= "" then set[customHero] = true end
+    end
+    self._dotakartAllowedHeroSet = set
+    return set
+end
+
+function CAddonTemplateGameMode:IsAllowedKartHeroName(heroName)
+    heroName = tostring(heroName or "")
+    local set = self:GetAllowedKartHeroSet()
+    return set[heroName] == true
+end
+
+function CAddonTemplateGameMode:GetDefaultKartHeroForPlayer(playerID)
+    local pool = DOTA_KART_KART_HERO_POOL or {}
+    if #pool <= 0 then return "npc_dota_hero_invoker" end
+    local index = ((tonumber(playerID) or 0) % #pool) + 1
+    return pool[index] or "npc_dota_hero_invoker"
+end
+
+function CAddonTemplateGameMode:ApplyCustomKartHeroModel(unit)
+    if unit == nil or unit:IsNull() then return false end
+    local heroName = unit:GetUnitName()
+    local baseHero = self:GetBaseHeroNameForKartHero(heroName)
+    pcall(function() unit.dk_kart_hero_name = baseHero end)
+    pcall(function() unit.dotakart_display_hero = baseHero end)
+    pcall(function() unit.dotakart_public_ai_hero = baseHero end)
+
+    local modelPath = nil
+    if DOTA_KART_CUSTOM_KART_MODELS ~= nil then modelPath = DOTA_KART_CUSTOM_KART_MODELS[heroName] or DOTA_KART_CUSTOM_KART_MODELS[baseHero] end
+    if modelPath == nil or modelPath == "" then return false end
+
+    -- FIX85: aplica o modelo custom no próprio herói real, escala visual e esconde
+    -- wearables/modelos padrão que o Dota adiciona por cima do custom VMDL.
+    local scale = self:GetCustomKartModelScale(heroName)
+    local ok1 = pcall(function() unit:SetModel(modelPath) end)
+    local ok2 = pcall(function() unit:SetOriginalModel(modelPath) end)
+    local ok3 = pcall(function() unit:SetModelScale(scale) end)
+    pcall(function() unit:RemoveNoDraw() end)
+    pcall(function() unit.dk_kart_custom_model = modelPath end)
+    pcall(function() unit.dk_kart_custom_model_scale = scale end)
+    if DOTA_KART_CUSTOM_KART_GROUND_Z_OFFSET ~= nil then
+        local zoff = tonumber(DOTA_KART_CUSTOM_KART_GROUND_Z_OFFSET[heroName] or DOTA_KART_CUSTOM_KART_GROUND_Z_OFFSET[baseHero] or 0) or 0
+        pcall(function() unit.dk_kart_custom_z_offset = zoff end)
+    end
+
+    local hidden = self:HideDefaultHeroWearablesForCustomKart(unit, heroName)
+
+    -- Os cosméticos/wearables podem aparecer alguns frames depois do spawn/hero selection.
+    -- Reaplica a limpeza em pequenas janelas sem tocar em HUD, itens, IA ou controle.
+    local ent = -1
+    pcall(function() ent = unit:entindex() end)
+    local mode = GameRules:GetGameModeEntity()
+    if mode ~= nil and ent ~= nil and ent >= 0 then
+        local delays = { 0.03, 0.20, 0.60, 1.20, 2.00 }
+        for i, delay in ipairs(delays) do
+            mode:SetContextThink("DotaKartCustomKartModel_FIX85_" .. tostring(ent) .. "_" .. tostring(i), function()
+                return self:ReapplyCustomKartHeroModel(unit, heroName, modelPath, scale)
+            end, delay)
+        end
+    end
+
+    print("[DotA Kart] FIX85 custom kart model aplicado: " .. tostring(heroName) .. " -> " .. tostring(modelPath) .. " scale=" .. tostring(scale) .. " hidden_children=" .. tostring(hidden))
+    return ok1 or ok2 or ok3
+end
+
+function CAddonTemplateGameMode:ReplaceInvalidKartHero(playerID, oldHero)
+    playerID = tonumber(playerID) or -1
+    if playerID < 0 then return false end
+    local oldHeroName = oldHero and oldHero:GetUnitName() or ""
+    local replacement = self:GetCustomKartHeroForBaseHero(oldHeroName)
+    if replacement == nil or replacement == oldHeroName or not self:IsAllowedKartHeroName(replacement) then
+        replacement = self:GetDefaultKartHeroForPlayer(playerID)
+    end
+    print("[DotA Kart] Hero invalido/base detectado. player=" .. tostring(playerID) .. " hero=" .. tostring(oldHeroName) .. " -> " .. tostring(replacement))
+
+    if PlayerResource ~= nil and PlayerResource.ReplaceHeroWith ~= nil then
+        local ok, newHero = pcall(function() return PlayerResource:ReplaceHeroWith(playerID, replacement, 0, 0) end)
+        if ok and newHero ~= nil and not newHero:IsNull() then
+            pcall(function() self:ApplyCustomKartHeroModel(newHero) end)
+            return true
+        end
+    end
+
+    return false
+end
+
 function CAddonTemplateGameMode:OnNPCSpawned(keys)
     local spawnedUnit = EntIndexToHScript(keys.entindex)
     if spawnedUnit == nil or spawnedUnit:IsNull() then return end
 
+    if GameRules.DotaKartMinerSystem ~= nil and GameRules.DotaKartMinerSystem.OnNPCSpawned ~= nil then
+        GameRules.DotaKartMinerSystem:OnNPCSpawned(spawnedUnit)
+    end
+
     if spawnedUnit:IsRealHero() and not spawnedUnit:IsIllusion() then
         local playerID = spawnedUnit:GetPlayerOwnerID()
         if playerID ~= nil and playerID >= 0 then
+            local heroName = spawnedUnit:GetUnitName()
+            if not self:IsAllowedKartHeroName(heroName) then
+                if self:ReplaceInvalidKartHero(playerID, spawnedUnit) then
+                    return
+                end
+                print("[DotA Kart] AVISO: heroi fora da lista oficial registrado porque ReplaceHeroWith falhou: " .. tostring(heroName))
+            end
+
+            self:ApplyCustomKartHeroModel(spawnedUnit)
             self:AssignPlayerToFFA(playerID)
             DotaKartHUD:RegisterKart(playerID, spawnedUnit)
 
@@ -1248,6 +1937,22 @@ end
 
 function CAddonTemplateGameMode:OnThink()
     local state = GameRules:State_Get()
+
+    -- FIX119: inicia os 80s apenas quando a tela GameSetup realmente entrou em cena.
+    local setupState = DOTA_GAMERULES_STATE_CUSTOM_GAME_SETUP or 2
+    local heroSelectionState = DOTA_GAMERULES_STATE_HERO_SELECTION or 3
+    if state == setupState then
+        self:StartDotaKartGameSetupCountdown()
+    end
+
+    if state == heroSelectionState then
+        self.dotakartHeroSelectionSeen = true
+    elseif self.dotakartHeroSelectionSeen == true and self.dotakartHeroAutoPickStarted ~= true and
+           state > heroSelectionState and state < DOTA_GAMERULES_STATE_POST_GAME then
+        -- A selecao de 60s terminou: qualquer humano sem pick recebe um heroi aleatorio.
+        self:StartPostHeroSelectionAutoPick()
+    end
+
     if state >= DOTA_GAMERULES_STATE_PRE_GAME and state < DOTA_GAMERULES_STATE_POST_GAME then
         if not self.raceStarted and not self.preRaceCountdownStarted then
             self:SchedulePreRaceCountdownCheck(false)

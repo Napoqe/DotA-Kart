@@ -1,0 +1,112 @@
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc41:version{12fc9d44-453a-4ae4-b4d9-7e2ac0bbd4e0} -->
+{
+	rootNode = 
+	{
+		_class = "RootNode"
+		children = 
+		[
+			{
+				_class = "RenderMeshList"
+				children = 
+				[
+					{
+						_class = "RenderMeshFile"
+						filename = "models/invoker/Invoker_Kart.fbx"
+						import_scale = 1.0
+						import_filter = 
+						{
+							exclude_by_default = false
+							exception_list = [  ]
+						}
+					},
+					{
+						_class = "Select All"
+						children = 
+						[
+							{
+								_class = "Replace Materials"
+								position = [ 0.0, 0.0, 0.0 ]
+								angle = [ 0.0, 0.0, 0.0 ]
+								remaps = 
+								[
+									{
+										from = "blinn3.vmat"
+										to = "materials/invoker/invoker_arms.vmat"
+									},
+									{
+										from = "material.vmat"
+										to = "materials/invoker/kart/kart_texture.vmat"
+									},
+									{
+										from = "blinn4.vmat"
+										to = "materials/invoker/invoker_back.vmat"
+									},
+									{
+										from = "blinn5.vmat"
+										to = "materials/invoker/invoker_base.vmat"
+									},
+									{
+										from = "blinn6.vmat"
+										to = "materials/invoker/invoker_belt.vmat"
+									},
+									{
+										from = "blinn7.vmat"
+										to = "materials/invoker/invoker_head.vmat"
+									},
+									{
+										from = "blinn9.vmat"
+										to = "materials/invoker/invoker_shoulder.vmat"
+									},
+									{
+										from = "blinn8.vmat"
+										to = "materials/models/heroes/invoker/invoker_head_color.vmat"
+									},
+								]
+							},
+						]
+						position = [ 0.0, 0.0, 0.0 ]
+						angle = [ 0.0, 0.0, 0.0 ]
+						select_vertices = true
+						select_edges = true
+						select_faces = true
+					},
+				]
+			},
+			{
+				_class = "AnimationList"
+				children = 
+				[
+					{
+						_class = "AnimFile"
+						name = "Invoker_Kart"
+						is_default_idle_anim = false
+						activity_name = "ACT_DOTA_RUN"
+						activity_weight = 1
+						weight_list_name = "default"
+						fade_in_time = 0.2
+						fade_out_time = 0.2
+						looping = true
+						delta = false
+						worldSpace = false
+						hidden = false
+						anim_markup_ordered = false
+						disable_compression = false
+						animgraph_additive = false
+						delete_from_compiled_model = false
+						source_filename = "models/invoker/Invoker_Kart.fbx"
+						import_bone_scales = false
+						start_frame = -1
+						end_frame = -1
+						framerate = -1.0
+						reverse = false
+						additional_anim_files = [  ]
+					},
+				]
+				default_root_bone_name = "Root_0"
+			},
+		]
+		model_archetype = ""
+		primary_associated_entity = ""
+		document_sub_type = "ModelDocSubType_None"
+	}
+}

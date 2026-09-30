@@ -6,6 +6,7 @@
 	maps = 
 	[
 		"radiant_track",
+		"mines",
 	]
 	CheckAFKPlayers = false
 	DefaultMap = "radiant_track"

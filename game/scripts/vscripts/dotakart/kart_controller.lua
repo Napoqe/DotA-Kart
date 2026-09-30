@@ -197,10 +197,18 @@ function DotaKartController:Init(hud)
         player_collision_radius = 150,
         tree_collision_radius = 96,
         obstacle_probe_radius = 72,
+        -- FIX116: props do mapa mines que devem reagir como árvores/paredes para os karts.
+        mines_prop_collision_padding = 78,
+        mines_prop_fallback_radius = 170,
+        mines_prop_cache_interval = 0.75,
         -- FIX30: high ground bloqueia fora da pista, mas permite rampas/paths válidos.
         max_step_height = 44,
         track_lane_width = 900,
         track_max_step_height = 260,
+        -- FIX74: bots publicos precisam conseguir subir rampas/escadas da pista.
+        -- Mantem o bloqueio forte para humanos/off-road, mas permite maior delta vertical
+        -- quando uma IA publica esta dentro da faixa da pista.
+        public_ai_track_max_step_height = 900,
         high_ground_lookahead = 190,
         high_ground_pushback = 245,
         wall_bounce_speed_factor = 0.68,
@@ -214,7 +222,36 @@ function DotaKartController:Init(hud)
         drift_enabled = true,
         drift_min_speed = 560,
         drift_lateral_factor = 0.34,
-        drift_speed_loss_factor = 0.985
+        drift_speed_loss_factor = 0.985,
+
+        -- FIX89: penalidade off-road. Fora da faixa da pista/dk_track_* ou em tile sem Path,
+        -- o kart perde velocidade e fica instável. Star/BKB ignora a penalidade.
+        offroad_enabled = true,
+        offroad_speed_factor = 0.66,
+        offroad_reverse_speed_factor = 0.78,
+        offroad_accel_factor = 0.70,
+        offroad_extra_friction = 620,
+        offroad_instability_yaw = 52,
+        offroad_lateral_drift = 95,
+        offroad_min_speed_for_instability = 180,
+        offroad_gridnav_required = true,
+        -- FIX97: usa o pathing/GridNav do tile/mapa como referência principal de pista.
+        -- VScript não expõe diretamente o nome do material/tile set (ex: radiant_basic),
+        -- então a referência segura é GridNav:IsTraversable/IsBlocked.
+        -- FIX98: não use GridNav como única referência, porque Block Wards não aparece como
+        -- pista/grama para IsTraversable em todas as builds. A base volta a ser corredor dk_track_*
+        -- + atalhos dk_track_skip, com GridNav apenas como ajuda/penalty quando expõe bloqueio.
+        offroad_use_gridnav_only = false,
+        official_path_sample_radius = 96,
+        -- FIX112: células expostas como IsTraversable=true + IsBlocked=true (Block Wards)
+        -- voltam a ser colisão física real. A função ainda é mantida pelo nome antigo por compatibilidade.
+        offroad_detect_ward_block_as_penalty = true,
+        -- FIX96: entidades dk_track_skip são atalhos oficiais da pista.
+        -- Dentro deste raio o kart não sofre penalidade de grama/no-path e não é bloqueado por GridNav/highground lateral.
+        track_skip_name = "dk_track_skip",
+        track_skip_radius = 1500,
+        track_skip_cache_interval = 1.0,
+        offroad_debug = false
     }
 
     -- FIX15: não use Dynamic_Wrap aqui. Em CustomGameEventManager ele pode chamar o método
@@ -254,6 +291,23 @@ function DotaKartController:Init(hud)
         self.config.debug = not self.config.debug
         print("[DotaKartController] debug = " .. tostring(self.config.debug))
     end, "DotA Kart: alterna debug do controle", FCVAR_CHEAT)
+
+    Convars:RegisterCommand("dk_debug_offroad", function()
+        local hero = self:GetHeroForPlayer(0)
+        if not DKValidUnit(hero) then print("[DotaKartController] dk_debug_offroad: player 0 sem hero") return end
+        local pos = hero:GetAbsOrigin()
+        local trav, blocked, tree = "n/a", "n/a", "n/a"
+        if GridNav ~= nil then
+            pcall(function() trav = tostring(GridNav:IsTraversable(pos)) end)
+            pcall(function() blocked = tostring(GridNav:IsBlocked(pos)) end)
+            pcall(function() tree = tostring(GridNav:IsNearbyTree(pos, tonumber(self.config.tree_collision_radius) or 96, true)) end)
+        end
+        local skipCount = 0
+        local pts = self:RefreshTrackSkipPoints(true) or {}
+        skipCount = #pts
+        local info = self:GetOffroadInfo(0, hero, pos, DKNow())
+        print("[DotaKartController] dk_debug_offroad pos=(" .. math.floor(pos.x) .. "," .. math.floor(pos.y) .. "," .. math.floor(pos.z) .. ") traversable=" .. tostring(trav) .. " blocked=" .. tostring(blocked) .. " tree=" .. tostring(tree) .. " trackSkip=" .. tostring(self:IsPositionInsideTrackSkip(pos)) .. " skipCount=" .. tostring(skipCount) .. " insideTrack=" .. tostring(self:IsPositionInsideTrackLane(pos)) .. " officialPath=" .. tostring(self:IsPositionOnOfficialPath(pos)) .. " wardPenalty=" .. tostring(self:IsGridNavWardBlockPenaltyTile(pos)) .. " offroad=" .. tostring(info and info.active) .. " reason=" .. tostring(info and info.reason))
+    end, "DotA Kart: imprime debug de GridNav/off-road/track_skip do player 0", FCVAR_CHEAT)
 
     Convars:RegisterCommand("dk_kart_invert_steer", function()
         self.config.steering_sign = -self.config.steering_sign
@@ -354,6 +408,26 @@ function DotaKartController:GetState(playerID)
             star_until = 0,
             hook_passthrough_until = 0,
             hook_passthrough_target = -1,
+            burrow_airborne_until = 0,
+            tornado_airborne_until = 0,
+            rooted_until = 0,
+            spectral_path_buff_until = 0,
+            spectral_path_bonus_pct = 0,
+            spectral_unobstructed_until = 0,
+            spectral_recovery_started = 0,
+            spectral_last_safe_track_x = nil,
+            spectral_last_safe_track_y = nil,
+            spectral_last_safe_track_z = nil,
+            battle_hunger_bonus_until = 0,
+            battle_hunger_bonus_pct = 0,
+            battle_hunger_slow_until = 0,
+            battle_hunger_slow_pct = 0,
+            miner_crash_until = 0,
+            miner_crash_slow_pct = 0,
+            miner_crash_instability_yaw = 0,
+            miner_crash_lateral = 0,
+            doppelwalk_bonus_until = 0, doppelwalk_bonus_pct = 0,
+            shukuchi_until = 0, shukuchi_haste_speed = 0, shukuchi_phased_until = 0,
             slow_until = 0,
             slow_start_time = 0,
             slow_initial_pct = 0,
@@ -367,7 +441,9 @@ function DotaKartController:GetState(playerID)
             last_collision_time = 0,
             bump_push_x = 0,
             bump_push_y = 0,
-            last_debug_time = 0
+            last_debug_time = 0,
+            custom_engine_loop_started = false,
+            custom_engine_loop_entindex = -1
         }
     end
     return self.states[playerID]
@@ -449,6 +525,47 @@ function DotaKartController:SuppressDotaAutoAttack(hero)
     end)
 end
 
+function DotaKartController:IsInvokerCustomKart(hero)
+    if not DKValidUnit(hero) then return false end
+    local unitName = ""
+    local modelName = ""
+    pcall(function() unitName = tostring(hero:GetUnitName() or "") end)
+    pcall(function() modelName = tostring(hero:GetModelName() or "") end)
+    return unitName == "npc_dota_hero_dotakart_invoker" or modelName == "models/invoker/invoker_kart.vmdl"
+end
+
+function DotaKartController:EnsureCustomKartEngineLoop(playerID, hero, st)
+    if not DKValidUnit(hero) or st == nil then return end
+    if not self:IsInvokerCustomKart(hero) then return end
+
+    local ent = -1
+    pcall(function() ent = hero:entindex() end)
+    local now = GameRules ~= nil and GameRules.GetGameTime ~= nil and GameRules:GetGameTime() or 0
+
+    -- FIX113: RegisterHero acontece antes da largada. O FIX112 marcava o som como
+    -- iniciado nesse momento; se a transição para a corrida encerrasse a voz, o
+    -- controller nunca a iniciava novamente. Durante a corrida renovamos a voz
+    -- periodicamente e block_matching_entity impede empilhamento.
+    if tonumber(st.custom_engine_loop_entindex) ~= tonumber(ent) then
+        st.custom_engine_loop_started = false
+        st.custom_engine_loop_entindex = ent
+        st.custom_engine_loop_next_refresh = 0
+    end
+
+    if st.custom_engine_loop_started == true and now < (tonumber(st.custom_engine_loop_next_refresh) or 0) then return end
+
+    pcall(function() StopSoundOn("dotakart_engine_idle", hero) end)
+    if StopSoundEvent ~= nil then
+        pcall(function() StopSoundEvent("dotakart_engine_idle", hero) end)
+    end
+    pcall(function() EmitSoundOn("dotakart_engine_idle", hero) end)
+    pcall(function() StartSoundEvent("dotakart_engine_idle", hero) end)
+
+    st.custom_engine_loop_started = true
+    st.custom_engine_loop_entindex = ent
+    st.custom_engine_loop_next_refresh = now + 4.0
+end
+
 function DotaKartController:RegisterHero(playerID, hero)
     if playerID == nil or playerID < 0 then return end
     if not DKValidUnit(hero) then return end
@@ -462,6 +579,14 @@ function DotaKartController:RegisterHero(playerID, hero)
 
     self:ApplyKartModifier(hero)
     self:SetHeroFacing(hero, st.yaw)
+
+    -- FIX113: não iniciar o motor no lobby/pré-largada. O primeiro UpdateKart
+    -- real inicia a voz e mantém o refresh durante a corrida.
+    if self:IsInvokerCustomKart(hero) then
+        st.custom_engine_loop_started = false
+        st.custom_engine_loop_entindex = -1
+        st.custom_engine_loop_next_refresh = 0
+    end
 
     if self.config.start_with_test_item and (self.heldItems[playerID] == nil or self.heldItems[playerID] == "") then
         self:SetHeldItem(playerID, self.config.test_item_name)
@@ -526,6 +651,21 @@ function DotaKartController:IsKartLocked(playerID, now)
     return (st.locked_until or 0) > (now or DKNow())
 end
 
+function DotaKartController:SetKartRoot(playerID, duration)
+    local st = self:GetState(playerID)
+    local now = DKNow()
+    local dur = math.max(0.05, tonumber(duration) or 1.0)
+    st.rooted_until = math.max(st.rooted_until or 0, now + dur)
+    st.speed = 0
+    st.input.forward = false
+    st.input.reverse = false
+end
+
+function DotaKartController:IsKartRooted(playerID, now)
+    local st = self:GetState(playerID)
+    return (st.rooted_until or 0) > (now or DKNow())
+end
+
 function DotaKartController:SetKartSlow(playerID, duration, slowPct, recoverPerTick, tickInterval)
     local st = self:GetState(playerID)
     local now = DKNow()
@@ -536,6 +676,19 @@ function DotaKartController:SetKartSlow(playerID, duration, slowPct, recoverPerT
     st.slow_initial_pct = math.max(tonumber(st.slow_initial_pct or 0) or 0, pct)
     st.slow_recover_per_tick = tonumber(recoverPerTick) or 0.001
     st.slow_tick = tonumber(tickInterval) or 0.03
+end
+
+-- FIX115: running over a miner applies a short, strong racing penalty without
+-- reusing item/off-road state channels.
+function DotaKartController:ApplyMinerCrash(playerID, duration, slowPct, instabilityYaw, lateralDrift)
+    local st = self:GetState(playerID)
+    local now = DKNow()
+    local dur = math.max(0.10, tonumber(duration) or 2.25)
+    st.miner_crash_until = math.max(tonumber(st.miner_crash_until) or 0, now + dur)
+    st.miner_crash_slow_pct = DKClamp(tonumber(slowPct) or 0.70, 0, 0.90)
+    st.miner_crash_instability_yaw = math.max(0, tonumber(instabilityYaw) or 185)
+    st.miner_crash_lateral = math.max(0, tonumber(lateralDrift) or 155)
+    st.speed = (tonumber(st.speed) or 0) * 0.42
 end
 
 function DotaKartController:GetKartSlowPct(playerID, now)
@@ -620,6 +773,9 @@ end
 function DotaKartController:OnInputItem(eventSourceIndex, keys)
     local playerID = DKGetPlayerIDFromEvent(eventSourceIndex, keys)
     if playerID < 0 then return end
+    local st = self:GetState(playerID)
+    st.force_forward_item = DKBool(keys and keys.force_forward)
+    st.force_forward_item_until = DKNow() + 0.20
     self:UseItem(playerID)
 end
 
@@ -695,10 +851,44 @@ function DotaKartController:GetTrackYawForHero(hero)
     return DKNormalizeYaw(math.deg(DKAtan2(dy, dx)))
 end
 
+function DotaKartController:GetHeroUnitName(hero)
+    if not DKValidUnit(hero) then return "" end
+    local name = ""
+    pcall(function() name = tostring(hero:GetUnitName() or "") end)
+    return name
+end
+
+function DotaKartController:GetCustomKartVisualYawOffset(hero)
+    local heroName = self:GetHeroUnitName(hero)
+    if DOTA_KART_CUSTOM_KART_FACING_YAW_OFFSET ~= nil then
+        return tonumber(DOTA_KART_CUSTOM_KART_FACING_YAW_OFFSET[heroName] or 0) or 0
+    end
+    return 0
+end
+
+function DotaKartController:GetCustomKartGroundZOffset(hero)
+    local heroName = self:GetHeroUnitName(hero)
+    local offset = 0
+    if DOTA_KART_CUSTOM_KART_GROUND_Z_OFFSET ~= nil then
+        offset = tonumber(DOTA_KART_CUSTOM_KART_GROUND_Z_OFFSET[heroName] or 0) or 0
+    end
+    return offset
+end
+
+function DotaKartController:ApplyCustomKartVisualGroundOffset(hero, pos)
+    if not DKValidUnit(hero) or pos == nil then return pos end
+    local offset = self:GetCustomKartGroundZOffset(hero)
+    if offset ~= 0 then
+        pos = Vector(pos.x, pos.y, pos.z + offset)
+        hero:SetAbsOrigin(pos)
+    end
+    return pos
+end
+
 function DotaKartController:SetHeroFacing(hero, yaw)
     if not DKValidUnit(hero) then return end
 
-    yaw = DKNormalizeYaw(yaw or 0)
+    yaw = DKNormalizeYaw((yaw or 0) + self:GetCustomKartVisualYawOffset(hero))
     local rad = math.rad(yaw)
     local fwd = Vector(math.cos(rad), math.sin(rad), 0)
 
@@ -718,8 +908,71 @@ function DotaKartController:SetHeroFacing(hero, yaw)
     end
 end
 
+function DotaKartController:RefreshTrackSkipPoints(force)
+    local now = DKNow()
+    if self._trackSkipPoints ~= nil and force ~= true and now < (self._nextTrackSkipRefresh or 0) then
+        return self._trackSkipPoints
+    end
+
+    local points = {}
+    local seen = {}
+    local name = tostring((self.config and self.config.track_skip_name) or "dk_track_skip")
+
+    local function addEnt(ent)
+        if ent == nil then return end
+        local idx = -1
+        pcall(function() idx = ent:entindex() end)
+        if idx ~= nil and seen[idx] == true then return end
+        if idx ~= nil then seen[idx] = true end
+        local ok, p = pcall(function() return ent:GetAbsOrigin() end)
+        if ok and p ~= nil then table.insert(points, Vector(p.x, p.y, p.z)) end
+    end
+
+    if Entities ~= nil then
+        if Entities.FindAllByName ~= nil then
+            local ok, list = pcall(function() return Entities:FindAllByName(name) end)
+            if ok and type(list) == "table" then
+                for _, ent in pairs(list) do addEnt(ent) end
+            end
+        end
+        if Entities.FindByName ~= nil then
+            local ent = Entities:FindByName(nil, name)
+            local guard = 0
+            while ent ~= nil and guard < 1024 do
+                addEnt(ent)
+                ent = Entities:FindByName(ent, name)
+                guard = guard + 1
+            end
+        end
+    end
+
+    self._trackSkipPoints = points
+    self._nextTrackSkipRefresh = now + (tonumber(self.config and self.config.track_skip_cache_interval or 1.0) or 1.0)
+    if self.config ~= nil and self.config.offroad_debug == true then
+        print("[DotaKartController] FIX98 track_skip points=" .. tostring(#points) .. " name=" .. tostring(name))
+    end
+    return points
+end
+
+function DotaKartController:IsPositionInsideTrackSkip(pos)
+    if pos == nil then return false end
+    local points = self:RefreshTrackSkipPoints(false)
+    if points == nil or #points <= 0 then return false end
+    local radius = tonumber(self.config and self.config.track_skip_radius or 1500) or 1500
+    local r2 = radius * radius
+    for _, p in ipairs(points) do
+        local dx = (pos.x or 0) - (p.x or 0)
+        local dy = (pos.y or 0) - (p.y or 0)
+        if (dx * dx + dy * dy) <= r2 then
+            return true
+        end
+    end
+    return false
+end
+
 function DotaKartController:IsPositionInsideTrackLane(pos)
     if pos == nil then return false end
+    if self:IsPositionInsideTrackSkip(pos) then return true end
     local hud = self.hud or GameRules.DotaKartHUD
     if hud == nil or hud.ProjectPositionOnTrack == nil or hud.trackSegments == nil or #hud.trackSegments <= 0 then
         return false
@@ -730,13 +983,385 @@ function DotaKartController:IsPositionInsideTrackLane(pos)
     local lane = tonumber(self.config.track_lane_width) or 900
     return distSq <= lane * lane
 end
+function DotaKartController:IsSpectralUnobstructed(playerID, now)
+    local st = self:GetState(playerID)
+    return st ~= nil and (tonumber(st.spectral_unobstructed_until or st.spectral_path_buff_until or 0) or 0) > (now or DKNow())
+end
+
+function DotaKartController:GetNearestTrackPointPosition(pos, hero)
+    if pos == nil or self.hud == nil or self.hud.trackWorldPoints == nil or #self.hud.trackWorldPoints <= 0 then return nil end
+    local idx = self:GetNearestTrackIndex(pos)
+    local p = self.hud.trackWorldPoints[idx]
+    if p == nil then return nil end
+    return Vector(p.x, p.y, GetGroundHeight(p, hero))
+end
+
+function DotaKartController:RememberSpectralSafeTrackPoint(playerID, hero, st, pos)
+    if st == nil or pos == nil then return end
+    local safe = false
+    if self:IsPositionInsideTrackLane(pos) then safe = true end
+    if safe ~= true and self:IsPositionOnPathTile(pos) then safe = true end
+    if safe ~= true then return end
+    local p = self:GetNearestTrackPointPosition(pos, hero)
+    if p == nil then return end
+    st.spectral_last_safe_track_x = p.x
+    st.spectral_last_safe_track_y = p.y
+    st.spectral_last_safe_track_z = p.z
+end
+
+function DotaKartController:RecoverSpectralIfStuck(playerID, hero, st, now)
+    if not DKValidUnit(hero) or st == nil then return false end
+    local lastActive = tonumber(st.spectral_last_active_time or st.spectral_unobstructed_until or 0) or 0
+    if lastActive <= 0 or now < lastActive then
+        st.spectral_recovery_started = 0
+        return false
+    end
+    if now > lastActive + 12.0 then
+        st.spectral_recovery_started = 0
+        return false
+    end
+
+    local pos = hero:GetAbsOrigin()
+    local blocked = false
+    local noPath = false
+    pcall(function() blocked = self:IsWorldCollisionBlocked(pos, hero, pos, nil) == true end)
+    noPath = self:IsPositionOnPathTile(pos) ~= true
+
+    if blocked ~= true and noPath ~= true then
+        st.spectral_recovery_started = 0
+        self:RememberSpectralSafeTrackPoint(playerID, hero, st, pos)
+        return false
+    end
+
+    if (tonumber(st.spectral_recovery_started or 0) or 0) <= 0 then
+        st.spectral_recovery_started = now
+        return false
+    end
+
+    local delay = tonumber(st.spectral_recovery_delay or 5.0) or 5.0
+    if now - st.spectral_recovery_started < delay then return false end
+
+    local target = nil
+    if st.spectral_last_safe_track_x ~= nil then
+        target = Vector(st.spectral_last_safe_track_x, st.spectral_last_safe_track_y, st.spectral_last_safe_track_z or 0)
+        target.z = GetGroundHeight(target, hero) + (self.config.ground_z_offset or 0)
+    else
+        target = self:GetNearestTrackPointPosition(pos, hero)
+        if target ~= nil then target.z = target.z + (self.config.ground_z_offset or 0) end
+    end
+
+    if target ~= nil then
+        hero:SetAbsOrigin(target)
+        pcall(function() FindClearSpaceForUnit(hero, target, true) end)
+        st.speed = 0
+        st.spectral_recovery_started = 0
+        st.spectral_last_active_time = 0
+        if self.config.debug then
+            print("[DotaKartController] FIX91 Spectral recovery teleport p" .. tostring(playerID))
+        end
+        return true
+    end
+    return false
+end
+
+function DotaKartController:IsGridNavWardBlockPenaltyTile(pos)
+    -- FIX98: tentativa segura para usar Block Wards como zona de penalidade.
+    -- VScript não expõe uma função IsWardBlocked. Em algumas builds, uma célula marcada
+    -- como Block Wards aparece como IsTraversable=true e IsBlocked=true. Quando isso
+    -- acontece, tratamos como off-road/grama, mas não como parede.
+    if pos == nil then return false end
+    if self.config == nil or self.config.offroad_detect_ward_block_as_penalty ~= true then return false end
+    if GridNav == nil or GridNav.IsTraversable == nil or GridNav.IsBlocked == nil then return false end
+    local traversable = false
+    local blocked = false
+    local okT = pcall(function() traversable = GridNav:IsTraversable(pos) == true end)
+    local okB = pcall(function() blocked = GridNav:IsBlocked(pos) == true end)
+    return okT and okB and traversable == true and blocked == true
+end
+
+function DotaKartController:IsPositionOnPathTile(pos)
+    if pos == nil or GridNav == nil or GridNav.IsTraversable == nil then return true end
+    local ok, traversable = pcall(function() return GridNav:IsTraversable(pos) end)
+    if not ok then return true end
+    return traversable == true
+end
+
+function DotaKartController:IsPositionOnOfficialPath(pos)
+    -- FIX97/FIX98: não há API Lua confiável para ler o material/tile set visual (radiant_basic)
+    -- nem a layer Block Wards diretamente. Para gameplay usamos dk_track_*/dk_track_skip
+    -- e o pathing exposto pelo GridNav.
+    if pos == nil then return false end
+    if self:IsPositionInsideTrackSkip(pos) then return true end
+    if self:IsGridNavWardBlockPenaltyTile(pos) then return false end
+    if GridNav == nil or GridNav.IsTraversable == nil then return true end
+
+    local sample = tonumber(self.config and self.config.official_path_sample_radius or 96) or 96
+    local probes = {
+        pos,
+        pos + Vector(sample, 0, 0),
+        pos + Vector(-sample, 0, 0),
+        pos + Vector(0, sample, 0),
+        pos + Vector(0, -sample, 0)
+    }
+
+    for _, p in ipairs(probes) do
+        local traversable = false
+        local blocked = false
+        local ok = pcall(function() traversable = GridNav:IsTraversable(p) == true end)
+        if ok and traversable == true then
+            if GridNav.IsBlocked ~= nil then
+                pcall(function() blocked = GridNav:IsBlocked(p) == true end)
+            end
+            if blocked ~= true then return true end
+        end
+    end
+    return false
+end
+
+function DotaKartController:GetOffroadInfo(playerID, hero, pos, now)
+    local info = { active = false, reason = "track" }
+    if self.config == nil or self.config.offroad_enabled ~= true then return info end
+    if pos == nil then return info end
+
+    -- Star/BKB mantém o comportamento já esperado: sem slow/penalidade off-road.
+    if self.IsKartStarActive ~= nil and self:IsKartStarActive(playerID) then return info end
+    -- FIX91: usuário no Shadow Path da Spectral Dagger fica desobstruído para cortar caminho.
+    if self:IsSpectralUnobstructed(playerID, now) then return info end
+
+    if self:IsPositionInsideTrackSkip(pos) then return info end
+
+    if self:IsGridNavWardBlockPenaltyTile(pos) then
+        info.active = true
+        info.reason = "ward_block_penalty"
+        return info
+    end
+
+    local onOfficialPath = self:IsPositionOnOfficialPath(pos)
+    if self.config.offroad_use_gridnav_only == true then
+        if onOfficialPath then return info end
+        info.active = true
+        info.reason = "no_official_path"
+        return info
+    end
+
+    local insideTrack = self:IsPositionInsideTrackLane(pos)
+    local onPath = true
+    if self.config.offroad_gridnav_required ~= false then
+        onPath = onOfficialPath
+    end
+
+    if insideTrack and onPath then return info end
+
+    info.active = true
+    if not insideTrack and not onPath then
+        info.reason = "off_track_no_path"
+    elseif not insideTrack then
+        info.reason = "off_track"
+    else
+        info.reason = "no_path"
+    end
+
+    return info
+end
+
+function DotaKartController:ApplyOffroadMovePenalty(playerID, hero, oldPos, desiredPos, moveDir, dt, now)
+    if oldPos == nil or desiredPos == nil then return desiredPos end
+    local info = self:GetOffroadInfo(playerID, hero, oldPos, now or DKNow())
+    if info.active ~= true then return desiredPos end
+
+    local factor = tonumber(self.config.offroad_speed_factor) or 0.66
+    local result = oldPos + (desiredPos - oldPos) * factor
+
+    local dir = DKNormalize2DVec(moveDir or (desiredPos - oldPos), Vector(1, 0, 0))
+    local right = Vector(dir.y, -dir.x, 0)
+    local wobble = math.sin((now or DKNow()) * 8.5 + (tonumber(playerID) or 0) * 1.77)
+    local lateral = wobble * (tonumber(self.config.offroad_lateral_drift) or 95) * (tonumber(dt) or self.config.tick_rate or 0.03)
+    result = result + right * lateral
+    result.z = GetGroundHeight(result, hero) + (self.config.ground_z_offset or 0)
+
+    local st = self:GetState(playerID)
+    if st ~= nil then
+        st.offroad_until = (now or DKNow()) + 0.20
+        st.offroad_reason = info.reason
+        if (st.speed or 0) > (self.config.max_speed or 880) * factor then
+            st.speed = DKApproach(st.speed or 0, (self.config.max_speed or 880) * factor, (self.config.offroad_extra_friction or 620) * (tonumber(dt) or 0.03))
+        end
+    end
+
+    return result
+end
+
+
+-- ============================================================
+-- FIX116: props sólidos do mapa mines (Wood Wall / rocks)
+-- Reagem como árvores para a física dos karts, sem depender do GridNav do prop.
+-- ============================================================
+function DotaKartController:GetMinesBlockingPropKind(ent)
+    if ent == nil or ent:IsNull() then return nil end
+    local name = ""
+    pcall(function() name = string.lower(tostring(ent:GetName() or "")) end)
+    name = string.gsub(name, "[_%-]+", " ")
+    name = string.gsub(name, "%s+", " ")
+    name = string.gsub(name, "^%s+", "")
+    name = string.gsub(name, "%s+$", "")
+    if name == "wood wall" then return "wood_wall" end
+    if name == "rocks" then return "rocks" end
+    return nil
+end
+
+function DotaKartController:RefreshMinesBlockingProps(force)
+    local now = DKNow()
+    if self._minesBlockingProps ~= nil and force ~= true and now < (self._nextMinesBlockingPropRefresh or 0) then
+        return self._minesBlockingProps
+    end
+
+    local out = {}
+    local seen = {}
+    local function add(ent)
+        if ent == nil or ent:IsNull() then return end
+        local kind = self:GetMinesBlockingPropKind(ent)
+        if kind == nil then return end
+        local idx = -1
+        pcall(function() idx = ent:entindex() end)
+        if idx ~= nil and seen[idx] then return end
+        if idx ~= nil then seen[idx] = true end
+        table.insert(out, { ent = ent, kind = kind })
+    end
+
+    if Entities ~= nil then
+        for _, name in ipairs({ "Wood Wall", "wood wall", "rocks", "Rocks" }) do
+            if Entities.FindAllByName ~= nil then
+                local ok, list = pcall(function() return Entities:FindAllByName(name) end)
+                if ok and type(list) == "table" then
+                    for _, ent in pairs(list) do add(ent) end
+                end
+            elseif Entities.FindByName ~= nil then
+                local cursor = nil
+                local guard = 0
+                while guard < 512 do
+                    guard = guard + 1
+                    local ent = nil
+                    pcall(function() ent = Entities:FindByName(cursor, name) end)
+                    if ent == nil then break end
+                    add(ent)
+                    cursor = ent
+                end
+            end
+        end
+    end
+
+    self._minesBlockingProps = out
+    self._nextMinesBlockingPropRefresh = now + (tonumber(self.config and self.config.mines_prop_cache_interval) or 0.75)
+    return out
+end
+
+function DotaKartController:IsPointInsideMinesProp(ent, pos, padding)
+    if ent == nil or ent:IsNull() or pos == nil then return false end
+    local origin = nil
+    pcall(function() origin = ent:GetAbsOrigin() end)
+    if origin == nil then return false end
+
+    padding = tonumber(padding) or tonumber(self.config and self.config.mines_prop_collision_padding) or 78
+    local mins, maxs = nil, nil
+    if ent.GetBoundingMins ~= nil and ent.GetBoundingMaxs ~= nil then
+        pcall(function() mins = ent:GetBoundingMins() end)
+        pcall(function() maxs = ent:GetBoundingMaxs() end)
+    end
+
+    if mins ~= nil and maxs ~= nil then
+        local yaw = 0
+        if ent.GetAngles ~= nil then
+            pcall(function()
+                local a = ent:GetAngles()
+                if a ~= nil then yaw = tonumber(a.y) or 0 end
+            end)
+        end
+        local rad = math.rad(-yaw)
+        local c, sn = math.cos(rad), math.sin(rad)
+        local dx = (pos.x or 0) - (origin.x or 0)
+        local dy = (pos.y or 0) - (origin.y or 0)
+        local dz = (pos.z or 0) - (origin.z or 0)
+        local lx = dx * c - dy * sn
+        local ly = dx * sn + dy * c
+        if lx >= (mins.x or 0) - padding and lx <= (maxs.x or 0) + padding
+            and ly >= (mins.y or 0) - padding and ly <= (maxs.y or 0) + padding
+            and dz >= (mins.z or -128) - 180 and dz <= (maxs.z or 128) + 220 then
+            return true
+        end
+        return false
+    end
+
+    local fallback = tonumber(self.config and self.config.mines_prop_fallback_radius) or 170
+    local dx = (pos.x or 0) - (origin.x or 0)
+    local dy = (pos.y or 0) - (origin.y or 0)
+    return (dx * dx + dy * dy) <= ((fallback + padding) * (fallback + padding))
+end
+
+function DotaKartController:FindMinesBlockingPropAtPosition(pos, padding, onlyKind)
+    if pos == nil then return nil, nil end
+    for _, data in ipairs(self:RefreshMinesBlockingProps(false) or {}) do
+        if data ~= nil and data.ent ~= nil and not data.ent:IsNull() and (onlyKind == nil or data.kind == onlyKind) then
+            if self:IsPointInsideMinesProp(data.ent, pos, padding) then
+                return data.ent, data.kind
+            end
+        end
+    end
+    return nil, nil
+end
 
 function DotaKartController:IsWorldCollisionBlocked(pos, hero, oldPos, moveDir)
     if pos == nil then return false, "nil" end
+    local spectralPID = nil
+    if DKValidUnit(hero) and self.GetPlayerIDForHero ~= nil then
+        pcall(function() spectralPID = self:GetPlayerIDForHero(hero) end)
+    end
+    if spectralPID ~= nil and spectralPID >= 0 and self:IsSpectralUnobstructed(spectralPID, DKNow()) then
+        return false, "spectral_unobstructed"
+    end
+    local insideTrackSkip = self:IsPositionInsideTrackSkip(pos)
 
     local radius = tonumber(self.config.obstacle_probe_radius) or 72
     local blocked = false
     local reason = ""
+
+    -- FIX112: Block Wards/GridNav blocked e árvores são paredes reais.
+    -- Isso precisa ser testado ANTES de qualquer atalho de official_path, senão árvores
+    -- dentro do corredor dk_track_* ficam atravessáveis.
+    if GridNav ~= nil then
+        pcall(function()
+            if GridNav:IsBlocked(pos) then
+                blocked = true
+                reason = self:IsGridNavWardBlockPenaltyTile(pos) and "ward_block" or "blocked"
+            end
+        end)
+        pcall(function()
+            if GridNav:IsNearbyTree(pos, tonumber(self.config.tree_collision_radius) or 96, true) then
+                blocked = true
+                reason = "tree"
+            end
+        end)
+    end
+    if not blocked then
+        local minesProp, minesKind = self:FindMinesBlockingPropAtPosition(pos, radius, nil)
+        if minesProp ~= nil then
+            blocked = true
+            reason = minesKind or "mines_prop"
+        end
+    end
+    if blocked then return true, reason end
+
+    -- dk_track_skip continua liberando highground/atalho oficial, mas NÃO atravessa
+    -- árvores nem células Block Wards/GridNav bloqueadas (checadas acima).
+    if insideTrackSkip then return false, "track_skip" end
+
+    local isPublicAI = false
+    if DKValidUnit(hero) then
+        local ent = -1
+        pcall(function() ent = hero:entindex() end)
+        if ent ~= nil and ent >= 0 and _G.DOTA_KART_PUBLIC_AI_UNIT_ENTS ~= nil and _G.DOTA_KART_PUBLIC_AI_UNIT_ENTS[ent] == true then
+            isPublicAI = true
+        end
+    end
 
     if oldPos ~= nil then
         local oldGround = GetGroundHeight(oldPos, hero)
@@ -756,6 +1381,9 @@ function DotaKartController:IsWorldCollisionBlocked(pos, hero, oldPos, moveDir)
             -- Fora da pista, continua bloqueando high ground forte.
             if self:IsPositionInsideTrackLane(p) then
                 local trackStep = tonumber(self.config.track_max_step_height) or 260
+                if isPublicAI then
+                    trackStep = tonumber(self.config.public_ai_track_max_step_height) or math.max(trackStep, 900)
+                end
                 if diff <= trackStep then
                     return false
                 end
@@ -775,29 +1403,42 @@ function DotaKartController:IsWorldCollisionBlocked(pos, hero, oldPos, moveDir)
             local dir = DKNormalize2DVec(moveDir, Vector(1,0,0))
             local look = tonumber(self.config.high_ground_lookahead) or 190
             for _, d in ipairs({ 48, 96, look }) do
-                if checkHighGround(pos + dir * d) then
-                    return true, "high_ground"
+                local probe = pos + dir * d
+                -- FIX74: a IA publica usa waypoints; o lookahead de high ground estava
+                -- tratando rampas/escadas validas como parede e fazia o bot dar re sem parar.
+                -- Para bots dentro da pista, deixa o movimento do tick decidir a subida.
+                if not (isPublicAI and self:IsPositionInsideTrackLane(probe)) then
+                    if GridNav ~= nil then
+                        local probeBlocked = false
+                        pcall(function() probeBlocked = GridNav:IsBlocked(probe) == true end)
+                        if probeBlocked then return true, "ward_block_ahead" end
+                    end
+                    if checkHighGround(probe) then
+                        return true, "high_ground"
+                    end
                 end
             end
         end
     end
 
-    if GridNav ~= nil then
-        pcall(function()
-            if GridNav:IsBlocked(pos) then
-                blocked = true
-                reason = "blocked"
-            end
-        end)
-        pcall(function()
-            if GridNav:IsNearbyTree(pos, tonumber(self.config.tree_collision_radius) or 96, true) then
-                blocked = true
-                reason = "tree"
-            end
-        end)
-    end
+    return false, "clear"
+end
 
-    return blocked, reason
+
+function DotaKartController:GetPlayerIDForHero(hero)
+    if not DKValidUnit(hero) then return -1 end
+    for playerID, h in pairs(self.heroes or {}) do
+        if DKValidUnit(h) and h == hero then return tonumber(playerID) or -1 end
+    end
+    if PlayerResource ~= nil then
+        for playerID = 0, DOTA_MAX_TEAM_PLAYERS - 1 do
+            if PlayerResource:IsValidPlayerID(playerID) then
+                local h = self:GetHeroForPlayer(playerID)
+                if DKValidUnit(h) and h == hero then return playerID end
+            end
+        end
+    end
+    return -1
 end
 
 function DotaKartController:GetRegisteredKartHeroes()
@@ -875,8 +1516,16 @@ function DotaKartController:ApplyKartCollisionPhysics(playerID, hero, st, oldPos
                 -- Por curto tempo, essa dupla ignora colisão entre si para o caster não ficar bloqueado.
                 local selfHookPass = st ~= nil and (st.hook_passthrough_until or 0) > now and tonumber(st.hook_passthrough_target or -1) == tonumber(otherID)
                 local otherHookPass = otherSt ~= nil and (otherSt.hook_passthrough_until or 0) > now and tonumber(otherSt.hook_passthrough_target or -1) == tonumber(playerID)
-                if selfHookPass or otherHookPass then
-                    -- Continua atravessando só esse kart.
+                -- FIX72: vítimas arremessadas para cima pelo Burrowstrike ficam sem colisão horizontal
+                -- por alguns décimos, permitindo que karts passem por baixo enquanto estão no ar.
+                local selfAirbornePass = st ~= nil and ((st.burrow_airborne_until or 0) > now or (st.tornado_airborne_until or 0) > now)
+                local otherAirbornePass = otherSt ~= nil and ((otherSt.burrow_airborne_until or 0) > now or (otherSt.tornado_airborne_until or 0) > now)
+                local selfSpectralPass = st ~= nil and (st.spectral_unobstructed_until or st.spectral_path_buff_until or 0) > now
+                local otherSpectralPass = otherSt ~= nil and (otherSt.spectral_unobstructed_until or otherSt.spectral_path_buff_until or 0) > now
+                local selfShukuchiPass = st ~= nil and (st.shukuchi_phased_until or 0) > now
+                local otherShukuchiPass = otherSt ~= nil and (otherSt.shukuchi_phased_until or 0) > now
+                if selfHookPass or otherHookPass or selfAirbornePass or otherAirbornePass or selfSpectralPass or otherSpectralPass or selfShukuchiPass or otherShukuchiPass then
+                    -- Continua atravessando só esse kart durante pass-through/airborne.
                 else
                 local selfStar = self:IsKartStarActive(playerID)
                 local otherStar = self:IsKartStarActive(otherID)
@@ -954,8 +1603,17 @@ function DotaKartController:MoveUnitWithKartPhysics(playerID, hero, desiredPos, 
     end
     local oldPos = hero:GetAbsOrigin()
     local now = DKNow()
+    if (st.spectral_unobstructed_until or st.spectral_path_buff_until or 0) > now then
+        st.spectral_last_active_time = math.max(tonumber(st.spectral_last_active_time or 0) or 0, tonumber(st.spectral_unobstructed_until or st.spectral_path_buff_until or now) or now)
+        self:RememberSpectralSafeTrackPoint(playerID, hero, st, oldPos)
+    else
+        self:RecoverSpectralIfStuck(playerID, hero, st, now)
+        oldPos = hero:GetAbsOrigin()
+    end
+    desiredPos = self:ApplyOffroadMovePenalty(playerID, hero, oldPos, desiredPos, moveDir, dt or self.config.tick_rate, now)
     local finalPos = self:ApplyKartCollisionPhysics(playerID, hero, st, oldPos, desiredPos, moveDir, dt or self.config.tick_rate, now)
     hero:SetAbsOrigin(finalPos)
+    finalPos = self:ApplyCustomKartVisualGroundOffset(hero, finalPos)
     return finalPos
 end
 
@@ -1189,10 +1847,31 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         return
     end
 
+    -- FIX112: garante o idle 3D do Invoker Kart mesmo após respawn/re-registro.
+    self:EnsureCustomKartEngineLoop(playerID, hero, st)
+
+    -- FIX72: root de corrida impede movimento, mas não bloqueia todos os itens.
+    if (st.rooted_until or 0) > now then
+        st.speed = 0
+        st.input.forward = false
+        st.input.reverse = false
+        self:SetHeroFacing(hero, st.yaw or self:GetUnitYaw(hero) or 0)
+        return
+    end
+
     local input = st.input or {}
     local throttle = 0
     if input.forward then throttle = throttle + 1 end
     if input.reverse then throttle = throttle - 1 end
+
+    local pos = hero:GetAbsOrigin()
+    if (st.spectral_unobstructed_until or st.spectral_path_buff_until or 0) > now then
+        st.spectral_last_active_time = math.max(tonumber(st.spectral_last_active_time or 0) or 0, tonumber(st.spectral_unobstructed_until or st.spectral_path_buff_until or now) or now)
+        self:RememberSpectralSafeTrackPoint(playerID, hero, st, pos)
+    else
+        if self:RecoverSpectralIfStuck(playerID, hero, st, now) then return end
+    end
+    local offroad = self:GetOffroadInfo(playerID, hero, pos, now)
 
     local boosting = now < (st.boost_until or 0)
     local maxSpeed = boosting and self.config.boost_max_speed or self.config.max_speed
@@ -1200,7 +1879,54 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
     if (st.item_max_speed_until or 0) > now and (st.item_max_speed or 0) > maxSpeed then
         maxSpeed = st.item_max_speed
     end
+    -- FIX91: bônus de velocidade do Shadow Path da Spectral Dagger.
+    if (st.spectral_path_buff_until or 0) > now then
+        local bonus = tonumber(st.spectral_path_bonus_pct or 0.10) or 0.10
+        maxSpeed = maxSpeed * (1.0 + bonus)
+        st.spectral_last_active_time = math.max(tonumber(st.spectral_last_active_time or 0) or 0, st.spectral_path_buff_until or now)
+    end
+
+    -- FIX108: Battle Hunger usa canais próprios para não sobrescrever Venom/Shadow Path/Bloodlust.
+    if (st.battle_hunger_bonus_until or 0) > now then
+        maxSpeed = maxSpeed * (1.0 + (tonumber(st.battle_hunger_bonus_pct) or 0.15))
+    end
+    if (st.doppelwalk_bonus_until or 0) > now then maxSpeed = maxSpeed * (1.0 + (tonumber(st.doppelwalk_bonus_pct) or 0.10)) end
     local reverseMax = self.config.reverse_max_speed
+    if (st.battle_hunger_slow_until or 0) > now then
+        local hungerSlow = DKClamp(tonumber(st.battle_hunger_slow_pct) or 0.15, 0, 0.95)
+        maxSpeed = math.max(90, maxSpeed * (1.0 - hungerSlow))
+        reverseMax = math.max(80, reverseMax * (1.0 - hungerSlow))
+        if (st.speed or 0) > maxSpeed then
+            st.speed = DKApproach(st.speed or 0, maxSpeed, (self.config.friction or 540) * 1.8 * dt)
+        end
+    end
+
+    -- FIX115: strong short slow after running over a mine worker.
+    if (st.miner_crash_until or 0) > now then
+        local minerSlow = DKClamp(tonumber(st.miner_crash_slow_pct) or 0.70, 0, 0.90)
+        maxSpeed = math.max(80, maxSpeed * (1.0 - minerSlow))
+        reverseMax = math.max(70, reverseMax * (1.0 - minerSlow * 0.70))
+        if math.abs(st.speed or 0) > maxSpeed then
+            local sign = (st.speed or 0) >= 0 and 1 or -1
+            st.speed = DKApproach(st.speed or 0, maxSpeed * sign, (self.config.friction or 540) * 2.4 * dt)
+        end
+    end
+
+    if offroad ~= nil and offroad.active == true then
+        local f = tonumber(self.config.offroad_speed_factor) or 0.66
+        local rf = tonumber(self.config.offroad_reverse_speed_factor) or 0.78
+        maxSpeed = math.max(160, maxSpeed * f)
+        reverseMax = math.max(90, reverseMax * rf)
+        st.offroad_until = now + 0.20
+        st.offroad_reason = offroad.reason
+        if (st.speed or 0) > maxSpeed then
+            st.speed = DKApproach(st.speed or 0, maxSpeed, (self.config.offroad_extra_friction or 620) * dt)
+        end
+        if self.config.offroad_debug and now - (st.last_offroad_debug or 0) > 1.0 then
+            st.last_offroad_debug = now
+            print("[DotaKartController] off-road p" .. tostring(playerID) .. " reason=" .. tostring(offroad.reason) .. " max=" .. tostring(math.floor(maxSpeed)))
+        end
+    end
 
     -- FIX34: slow de corrida (Venomous Gale). O slow começa forte e recupera aos poucos.
     local slowPct = 0
@@ -1215,8 +1941,13 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         end
     end
 
+    -- FIX117: Shukuchi haste cannot be reduced below its active haste speed.
+    if (st.shukuchi_until or 0) > now then local haste=tonumber(st.shukuchi_haste_speed) or 0; if haste>0 then maxSpeed=math.max(maxSpeed,haste) end end
+
     if throttle > 0 then
-        st.speed = st.speed + self.config.acceleration * dt
+        local accel = self.config.acceleration
+        if offroad ~= nil and offroad.active == true then accel = accel * (tonumber(self.config.offroad_accel_factor) or 0.70) end
+        st.speed = st.speed + accel * dt
     elseif throttle < 0 then
         if st.speed > 45 then
             -- S funciona primeiro como freio quando o kart ainda está indo para frente.
@@ -1225,7 +1956,9 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
             st.speed = st.speed - self.config.reverse_acceleration * dt
         end
     else
-        st.speed = DKApproach(st.speed, 0, self.config.friction * dt)
+        local fric = self.config.friction
+        if offroad ~= nil and offroad.active == true then fric = fric + (tonumber(self.config.offroad_extra_friction) or 620) end
+        st.speed = DKApproach(st.speed, 0, fric * dt)
     end
 
     st.speed = DKClamp(st.speed, -reverseMax, maxSpeed)
@@ -1245,9 +1978,20 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         st.yaw = DKNormalizeYaw(st.yaw + steer * self.config.turn_rate * speedFactor * reverseSteer * self.config.steering_sign * dt)
     end
 
+    if offroad ~= nil and offroad.active == true and math.abs(st.speed or 0) >= (tonumber(self.config.offroad_min_speed_for_instability) or 180) then
+        local wobble = math.sin(now * 10.0 + (tonumber(playerID) or 0) * 2.17)
+        local power = DKClamp(math.abs(st.speed or 0) / math.max(1, self.config.max_speed or 880), 0.20, 1.0)
+        st.yaw = DKNormalizeYaw(st.yaw + wobble * (tonumber(self.config.offroad_instability_yaw) or 52) * power * dt)
+    end
+
+    if (st.miner_crash_until or 0) > now then
+        local wobble = math.sin(now * 18.0 + (tonumber(playerID) or 0) * 1.73)
+        local strength = tonumber(st.miner_crash_instability_yaw) or 185
+        st.yaw = DKNormalizeYaw(st.yaw + wobble * strength * dt)
+    end
+
     local rad = math.rad(st.yaw)
     local forward = Vector(math.cos(rad), math.sin(rad), 0)
-    local pos = hero:GetAbsOrigin()
     local moveDir = forward
     local nextPos = pos + forward * (st.speed * dt)
 
@@ -1263,10 +2007,28 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         st.speed = st.speed * (tonumber(self.config.drift_speed_loss_factor) or 0.985)
     end
 
+    if offroad ~= nil and offroad.active == true and math.abs(st.speed or 0) >= (tonumber(self.config.offroad_min_speed_for_instability) or 180) then
+        local power = DKClamp(math.abs(st.speed or 0) / math.max(1, self.config.max_speed or 880), 0.20, 1.0)
+        local right = Vector(forward.y, -forward.x, 0)
+        local wobble = math.sin(now * 8.0 + (tonumber(playerID) or 0) * 1.39)
+        local lateral = right * (wobble * (tonumber(self.config.offroad_lateral_drift) or 95) * power * dt)
+        nextPos = nextPos + lateral
+        moveDir = DKNormalize2DVec((nextPos - pos), forward)
+    end
+
+    if (st.miner_crash_until or 0) > now then
+        local right = Vector(forward.y, -forward.x, 0)
+        local wobble = math.sin(now * 16.0 + (tonumber(playerID) or 0) * 2.31)
+        local lateral = right * (wobble * (tonumber(st.miner_crash_lateral) or 155) * dt)
+        nextPos = nextPos + lateral
+        moveDir = DKNormalize2DVec((nextPos - pos), forward)
+    end
+
     nextPos.z = GetGroundHeight(nextPos, hero) + self.config.ground_z_offset
 
     nextPos = self:ApplyKartCollisionPhysics(playerID, hero, st, pos, nextPos, moveDir, dt, now)
     hero:SetAbsOrigin(nextPos)
+    nextPos = self:ApplyCustomKartVisualGroundOffset(hero, nextPos)
     self:SetHeroFacing(hero, st.yaw)
 
     -- FIX15: não chamar hero:Stop() em loop. Isso cortava animações e parecia spam de ordem.
