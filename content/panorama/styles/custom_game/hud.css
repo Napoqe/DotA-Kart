@@ -720,3 +720,24 @@
     font-size: 14px;
     text-shadow: 0px 1px 2px 2.0 #000000ff;
 }
+
+
+/* FIX122: centered instruction for hold-to-use items. */
+.DKItemHintText
+{
+    width: 760px;
+    height: 58px;
+    horizontal-align: center;
+    vertical-align: bottom;
+    margin-bottom: 215px;
+    text-align: center;
+    color: #fff3a6ff;
+    font-size: 29px;
+    font-weight: bold;
+    text-shadow: 0px 0px 6px 5.0 #000000ff;
+    background-color: #111111c8;
+    border: 1px solid #d9b84acc;
+    border-radius: 6px;
+    padding-top: 10px;
+    visibility: collapse;
+}

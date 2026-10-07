@@ -262,6 +262,9 @@ function DotaKartController:Init(hud)
     CustomGameEventManager:RegisterListener("dotakart_input_item", function(eventSourceIndex, keys)
         return DotaKartController:OnInputItem(eventSourceIndex, keys)
     end)
+    CustomGameEventManager:RegisterListener("dotakart_input_self_item", function(eventSourceIndex, keys)
+        return DotaKartController:OnInputSelfItem(eventSourceIndex, keys)
+    end)
 
     if GameRules:GetGameModeEntity() ~= nil then
         GameRules:GetGameModeEntity():SetExecuteOrderFilter(Dynamic_Wrap(DotaKartController, "OrderFilter"), self)
@@ -428,6 +431,9 @@ function DotaKartController:GetState(playerID)
             miner_crash_lateral = 0,
             doppelwalk_bonus_until = 0, doppelwalk_bonus_pct = 0,
             shukuchi_until = 0, shukuchi_haste_speed = 0, shukuchi_phased_until = 0,
+            astral_enemy_until = 0, astral_self_until = 0,
+            ball_lightning_active = false, ball_lightning_speed = 0, ball_lightning_acceleration = 0,
+            anti_skip_glimpse_active = false,
             slow_until = 0,
             slow_start_time = 0,
             slow_initial_pct = 0,
@@ -669,6 +675,9 @@ end
 function DotaKartController:SetKartSlow(playerID, duration, slowPct, recoverPerTick, tickInterval)
     local st = self:GetState(playerID)
     local now = DKNow()
+    -- FIX120: Shukuchi is true haste/phased movement. Slow effects applied while it is active
+    -- are discarded instead of being queued to suddenly affect the kart when Shukuchi ends.
+    if (tonumber(st.shukuchi_until) or 0) > now then return end
     local dur = math.max(0.05, tonumber(duration) or 15.0)
     local pct = DKClamp(tonumber(slowPct) or 0.5, 0, 0.95)
     st.slow_until = math.max(st.slow_until or 0, now + dur)
@@ -685,10 +694,12 @@ function DotaKartController:ApplyMinerCrash(playerID, duration, slowPct, instabi
     local now = DKNow()
     local dur = math.max(0.10, tonumber(duration) or 2.25)
     st.miner_crash_until = math.max(tonumber(st.miner_crash_until) or 0, now + dur)
-    st.miner_crash_slow_pct = DKClamp(tonumber(slowPct) or 0.70, 0, 0.90)
+    local shukuchiActive = (tonumber(st.shukuchi_until) or 0) > now
+    st.miner_crash_slow_pct = shukuchiActive and 0 or DKClamp(tonumber(slowPct) or 0.70, 0, 0.90)
     st.miner_crash_instability_yaw = math.max(0, tonumber(instabilityYaw) or 185)
     st.miner_crash_lateral = math.max(0, tonumber(lateralDrift) or 155)
-    st.speed = (tonumber(st.speed) or 0) * 0.42
+    -- The crash can still make the kart unstable, but Shukuchi must never lose speed to a slow.
+    if not shukuchiActive then st.speed = (tonumber(st.speed) or 0) * 0.42 end
 end
 
 function DotaKartController:GetKartSlowPct(playerID, now)
@@ -773,10 +784,34 @@ end
 function DotaKartController:OnInputItem(eventSourceIndex, keys)
     local playerID = DKGetPlayerIDFromEvent(eventSourceIndex, keys)
     if playerID < 0 then return end
+
+    -- FIX123: Q self-cast is sent through the same event channel as T because that
+    -- channel is already proven reliable in Panorama. Do not fall through to normal T use.
+    if keys ~= nil and DKBool(keys.self_cast) then
+        if GameRules.DotaKartItemSystem ~= nil and GameRules.DotaKartItemSystem.UseSelfItem ~= nil then
+            GameRules.DotaKartItemSystem:UseSelfItem(playerID)
+        end
+        return
+    end
+
     local st = self:GetState(playerID)
     st.force_forward_item = DKBool(keys and keys.force_forward)
     st.force_forward_item_until = DKNow() + 0.20
-    self:UseItem(playerID)
+    local pressed = keys == nil or keys.pressed == nil or DKBool(keys.pressed)
+    st.item_button_down = pressed
+    if pressed then
+        self:UseItem(playerID)
+    elseif GameRules.DotaKartItemSystem ~= nil and GameRules.DotaKartItemSystem.OnItemButtonReleased ~= nil then
+        GameRules.DotaKartItemSystem:OnItemButtonReleased(playerID)
+    end
+end
+
+function DotaKartController:OnInputSelfItem(eventSourceIndex, keys)
+    local playerID = DKGetPlayerIDFromEvent(eventSourceIndex, keys)
+    if playerID < 0 then return end
+    if GameRules.DotaKartItemSystem ~= nil and GameRules.DotaKartItemSystem.UseSelfItem ~= nil then
+        GameRules.DotaKartItemSystem:UseSelfItem(playerID)
+    end
 end
 
 function DotaKartController:UseItem(playerID)
@@ -1524,7 +1559,11 @@ function DotaKartController:ApplyKartCollisionPhysics(playerID, hero, st, oldPos
                 local otherSpectralPass = otherSt ~= nil and (otherSt.spectral_unobstructed_until or otherSt.spectral_path_buff_until or 0) > now
                 local selfShukuchiPass = st ~= nil and (st.shukuchi_phased_until or 0) > now
                 local otherShukuchiPass = otherSt ~= nil and (otherSt.shukuchi_phased_until or 0) > now
-                if selfHookPass or otherHookPass or selfAirbornePass or otherAirbornePass or selfSpectralPass or otherSpectralPass or selfShukuchiPass or otherShukuchiPass then
+                local selfAstralPass = st ~= nil and ((st.astral_self_until or 0) > now or (st.astral_enemy_until or 0) > now)
+                local otherAstralPass = otherSt ~= nil and ((otherSt.astral_self_until or 0) > now or (otherSt.astral_enemy_until or 0) > now)
+                local selfBallPass = st ~= nil and st.ball_lightning_active == true
+                local otherBallPass = otherSt ~= nil and otherSt.ball_lightning_active == true
+                if selfHookPass or otherHookPass or selfAirbornePass or otherAirbornePass or selfSpectralPass or otherSpectralPass or selfShukuchiPass or otherShukuchiPass or selfAstralPass or otherAstralPass or selfBallPass or otherBallPass then
                     -- Continua atravessando só esse kart durante pass-through/airborne.
                 else
                 local selfStar = self:IsKartStarActive(playerID)
@@ -1831,6 +1870,19 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         st.yaw = self:GetTrackYawForHero(hero) or self:GetUnitYaw(hero) or 0
     end
 
+    -- FIX123: anti-skip Glimpse owns the kart transform until it reaches the exact
+    -- last legal dk_track_* checkpoint. Inputs/physics cannot move it meanwhile.
+    if st.anti_skip_glimpse_active == true then
+        st.speed = 0
+        return
+    end
+
+    -- FIX120: enemy Astral is completely disabled/hidden for the imprisonment duration.
+    if (tonumber(st.astral_enemy_until) or 0) > now then
+        st.speed = 0
+        return
+    end
+
     -- FIX26: stun de corrida desacelera e gira; item fica bloqueado no UseItem.
     if (st.stunned_until or 0) > now then
         self:UpdateStunnedKart(playerID, hero, st, dt, now)
@@ -1863,6 +1915,11 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
     local throttle = 0
     if input.forward then throttle = throttle + 1 end
     if input.reverse then throttle = throttle - 1 end
+    local shukuchiActive = (tonumber(st.shukuchi_until) or 0) > now
+    local ballLightningActive = st.ball_lightning_active == true
+    local astralSelfActive = (tonumber(st.astral_self_until) or 0) > now
+    local ignoreSlowEffects = shukuchiActive or ballLightningActive or astralSelfActive
+    if ballLightningActive then throttle = 1 end
 
     local pos = hero:GetAbsOrigin()
     if (st.spectral_unobstructed_until or st.spectral_path_buff_until or 0) > now then
@@ -1892,7 +1949,7 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
     end
     if (st.doppelwalk_bonus_until or 0) > now then maxSpeed = maxSpeed * (1.0 + (tonumber(st.doppelwalk_bonus_pct) or 0.10)) end
     local reverseMax = self.config.reverse_max_speed
-    if (st.battle_hunger_slow_until or 0) > now then
+    if (not ignoreSlowEffects) and (st.battle_hunger_slow_until or 0) > now then
         local hungerSlow = DKClamp(tonumber(st.battle_hunger_slow_pct) or 0.15, 0, 0.95)
         maxSpeed = math.max(90, maxSpeed * (1.0 - hungerSlow))
         reverseMax = math.max(80, reverseMax * (1.0 - hungerSlow))
@@ -1902,7 +1959,7 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
     end
 
     -- FIX115: strong short slow after running over a mine worker.
-    if (st.miner_crash_until or 0) > now then
+    if (not ignoreSlowEffects) and (st.miner_crash_until or 0) > now then
         local minerSlow = DKClamp(tonumber(st.miner_crash_slow_pct) or 0.70, 0, 0.90)
         maxSpeed = math.max(80, maxSpeed * (1.0 - minerSlow))
         reverseMax = math.max(70, reverseMax * (1.0 - minerSlow * 0.70))
@@ -1912,7 +1969,7 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         end
     end
 
-    if offroad ~= nil and offroad.active == true then
+    if (not ignoreSlowEffects) and offroad ~= nil and offroad.active == true then
         local f = tonumber(self.config.offroad_speed_factor) or 0.66
         local rf = tonumber(self.config.offroad_reverse_speed_factor) or 0.78
         maxSpeed = math.max(160, maxSpeed * f)
@@ -1933,7 +1990,7 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
     if self.GetKartSlowPct ~= nil then
         slowPct = self:GetKartSlowPct(playerID, now)
     end
-    if slowPct > 0 then
+    if (not ignoreSlowEffects) and slowPct > 0 then
         maxSpeed = math.max(90, maxSpeed * (1.0 - slowPct))
         reverseMax = math.max(80, reverseMax * (1.0 - slowPct * 0.55))
         if (st.speed or 0) > maxSpeed then
@@ -1941,12 +1998,15 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         end
     end
 
-    -- FIX117: Shukuchi haste cannot be reduced below its active haste speed.
-    if (st.shukuchi_until or 0) > now then local haste=tonumber(st.shukuchi_haste_speed) or 0; if haste>0 then maxSpeed=math.max(maxSpeed,haste) end end
+    -- FIX120: Shukuchi fully ignores slow effects; Ball Lightning uses its own very high travel speed;
+    -- self Astral moves at exactly 100% of normal kart max speed.
+    if shukuchiActive then local haste=tonumber(st.shukuchi_haste_speed) or 0; if haste>0 then maxSpeed=math.max(maxSpeed,haste) end end
+    if ballLightningActive then maxSpeed=math.max(maxSpeed,tonumber(st.ball_lightning_speed) or 1900) end
+    if astralSelfActive then maxSpeed=tonumber(self.config.max_speed) or 880 end
 
     if throttle > 0 then
-        local accel = self.config.acceleration
-        if offroad ~= nil and offroad.active == true then accel = accel * (tonumber(self.config.offroad_accel_factor) or 0.70) end
+        local accel = ballLightningActive and (tonumber(st.ball_lightning_acceleration) or 5200) or self.config.acceleration
+        if (not ignoreSlowEffects) and offroad ~= nil and offroad.active == true then accel = accel * (tonumber(self.config.offroad_accel_factor) or 0.70) end
         st.speed = st.speed + accel * dt
     elseif throttle < 0 then
         if st.speed > 45 then
@@ -1957,7 +2017,7 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         end
     else
         local fric = self.config.friction
-        if offroad ~= nil and offroad.active == true then fric = fric + (tonumber(self.config.offroad_extra_friction) or 620) end
+        if (not ignoreSlowEffects) and offroad ~= nil and offroad.active == true then fric = fric + (tonumber(self.config.offroad_extra_friction) or 620) end
         st.speed = DKApproach(st.speed, 0, fric * dt)
     end
 

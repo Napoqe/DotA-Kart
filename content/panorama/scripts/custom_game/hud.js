@@ -192,6 +192,9 @@
         item_dotakart_doppelwalk: { type: "ability", icon: "phantom_lancer_doppelwalk", label: "Doppelwalk", desc: "8s invisibility, +10% max speed and a moving decoy that can fool homing items." },
         item_dotakart_shukuchi: { type: "ability", icon: "weaver_shukuchi", label: "Shukuchi", desc: "Disjoints homing items, becomes invisible/phased and gains 1.5x max speed for 4s; stuns racers passed through." },
         item_dotakart_crystal_clone: { type: "ability", icon: "crystal_maiden_crystal_clone", label: "Crystal Clone", desc: "Places a 90s Crystal Maiden clone that explodes on kart/projectile contact and Frostbites nearby racers." },
+        item_dotakart_astral_imprisonment: { type: "ability", icon: "obsidian_destroyer_astral_imprisonment", label: "Astral Imprisonment", desc: "Imprisons an adjacent-position rival for 4s; Q self-casts for mobile invulnerable protection." },
+        item_dotakart_ball_lightning: { type: "ability", icon: "storm_spirit_ball_lightning", label: "Ball Lightning", desc: "Hold T to surge forward as invulnerable lightning using 6000 distance charges; exhausting them leaves a Static Remnant." },
+        item_dotakart_homing_missile: { type: "ability", icon: "gyrocopter_homing_missile", label: "Homing Missile", desc: "Tracks the racer one place ahead through the course; S+T targets one place behind. Longer travel means a longer stun." },
         item_dotakart_torrent_storm: {
             type: "ability",
             icon: "kunkka_torrent",
@@ -882,6 +885,8 @@
         "item_dotakart_doppelwalk",
         "item_dotakart_shukuchi",
         "item_dotakart_crystal_clone",
+        "item_dotakart_astral_imprisonment",
+        "item_dotakart_ball_lightning",
         "item_dotakart_torrent_storm"
     ];
 
@@ -918,6 +923,9 @@
         item_dotakart_doppelwalk: { type: "ability", icon: "phantom_lancer_doppelwalk", label: "Doppelwalk" },
         item_dotakart_shukuchi: { type: "ability", icon: "weaver_shukuchi", label: "Shukuchi" },
         item_dotakart_crystal_clone: { type: "ability", icon: "crystal_maiden_crystal_clone", label: "Crystal Clone" },
+        item_dotakart_astral_imprisonment: { type: "ability", icon: "obsidian_destroyer_astral_imprisonment", label: "Astral Imprisonment" },
+        item_dotakart_ball_lightning: { type: "ability", icon: "storm_spirit_ball_lightning", label: "Ball Lightning" },
+        item_dotakart_homing_missile: { type: "ability", icon: "gyrocopter_homing_missile", label: "Homing Missile" },
         item_dotakart_torrent_storm: { type: "ability", icon: "kunkka_torrent", label: "Torrent Storm" }
     };
 
@@ -1508,6 +1516,39 @@
         GameEvents.Subscribe("dotakart_multicast_text", ShowMulticastText);
         GameEvents.Subscribe("dotakart_concoction_timer", ShowConcoctionTimer);
     }
+})();
+
+// ============================================================
+// FIX122: local item-use hints (e.g. Ball Lightning hold-T instruction).
+// ============================================================
+(function () {
+    "use strict";
+    var hintToken = 0;
+    function HintFind(id) {
+        return $.GetContextPanel().FindChildTraverse(String(id || "").replace(/^#/, ""));
+    }
+    function ShowItemHint(data) {
+        data = data || {};
+        var root = HintFind("#DKFloatingTextRoot");
+        if (!root) return;
+        var label = HintFind("#DKItemHintText");
+        if (!label) {
+            label = $.CreatePanel("Label", root, "DKItemHintText");
+            label.AddClass("DKItemHintText");
+        }
+        hintToken++;
+        var token = hintToken;
+        label.text = String(data.text || "");
+        label.visible = true;
+        label.style.visibility = "visible";
+        var duration = Math.max(0.5, Number(data.duration || 1.8));
+        $.Schedule(duration, function () {
+            if (token !== hintToken || !label || !(label.IsValid && label.IsValid())) return;
+            label.visible = false;
+            label.style.visibility = "collapse";
+        });
+    }
+    if (typeof GameEvents !== "undefined") GameEvents.Subscribe("dotakart_item_hint", ShowItemHint);
 })();
 
 // ============================================================

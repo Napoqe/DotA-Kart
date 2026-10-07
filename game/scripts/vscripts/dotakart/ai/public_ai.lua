@@ -119,6 +119,19 @@ function DotaKartPublicAI:Init(gameMode, hud, controller, itemSystem)
         overtake_hold_min = 1.10,
         overtake_hold_max = 1.90,
         overtake_check_interval = 0.18,
+        -- FIX121: bots usually try to dodge Crystal Clone / Static Remnant,
+        -- but deliberately not every time so hazards can still catch AI racers.
+        crystal_clone_dodge_chance = 0.68,
+        crystal_clone_dodge_range = 900,
+        crystal_clone_dodge_offset = 340,
+        crystal_clone_dodge_hold = 1.15,
+        -- FIX124: recover bots that spend 5 seconds without meaningful progress
+        -- toward the next dk_track_* point. Recovery reuses the Glimpse system.
+        stuck_timeout = 5.0,
+        stuck_progress_epsilon = 140,
+        stuck_recovery_cooldown = 5.0,
+        -- Throw Unstable Concoction with a safety buffer before self-explosion.
+        concoction_safety_remaining = 1.75,
         debug = DOTA_KART_PUBLIC_AI_DEBUG == true
     }
 
@@ -1147,9 +1160,18 @@ function DotaKartPublicAI:CreateBotForSlot(slot)
         next_overtake_check = 0,
         overtake_offset = 0,
         overtake_until = 0,
+        clone_avoid_offset = 0,
+        clone_avoid_until = 0,
+        clone_dodge_decisions = {},
         next_item_check = DKNow() + DKRandomFloat(0.5, 1.4),
         next_item_use = 0,
-        last_dir = Vector(1, 0, 0)
+        last_dir = Vector(1, 0, 0),
+        -- FIX124 anti-stuck progress watch.
+        stuck_watch_index = nextIndex,
+        stuck_best_distance = nil,
+        stuck_last_progress_time = DKNow(),
+        stuck_last_progress_pos = Vector(spawn.x, spawn.y, spawn.z),
+        stuck_recovery_cooldown_until = 0
     }
     self.bots[slot] = bot
     self:RegisterPublicAIControlIDs(slot, botPlayerID, unit)
@@ -1234,9 +1256,84 @@ function DotaKartPublicAI:GetOffsetTarget(bot)
     if (bot.overtake_until or 0) > DKNow() then
         offset = offset + (tonumber(bot.overtake_offset) or 0)
     end
+    if (bot.clone_avoid_until or 0) > DKNow() then
+        offset = offset + (tonumber(bot.clone_avoid_offset) or 0)
+    end
     local target = base + right * offset
     target.z = GetGroundHeight(target, bot.unit)
     return target, dir
+end
+
+-- FIX124: reset the bot progress watchdog whenever it reaches a new waypoint or is
+-- legitimately disabled (stun/root/Astral/Glimpse). This prevents false recoveries.
+function DotaKartPublicAI:ResetAntiStuckWatch(bot, now, pos, distance)
+    if bot == nil then return end
+    now = tonumber(now) or DKNow()
+    local target = self:GetPoint(bot.next_index or 1)
+    if distance == nil and pos ~= nil and target ~= nil then distance = DKDistance2D(pos, target) end
+    bot.stuck_watch_index = tonumber(bot.next_index) or 1
+    bot.stuck_best_distance = tonumber(distance)
+    bot.stuck_last_progress_time = now
+    if pos ~= nil then bot.stuck_last_progress_pos = Vector(pos.x, pos.y, pos.z) end
+end
+
+function DotaKartPublicAI:TriggerAntiStuckGlimpse(bot, now)
+    if bot == nil or not DKValidUnit(bot.unit) then return false end
+    now = tonumber(now) or DKNow()
+    if now < (tonumber(bot.stuck_recovery_cooldown_until) or 0) then return false end
+
+    local nextIndex = tonumber(bot.next_index) or 1
+    local target = self:GetPoint(nextIndex)
+    if target == nil then return false end
+
+    local antiSkip = GameRules and GameRules.DotaKartAntiSkip or nil
+    if antiSkip == nil or antiSkip.GetState == nil or antiSkip.StartGlimpse == nil then return false end
+    local antiState = antiSkip:GetState(bot.player_id)
+    if antiState == nil or antiState.glimpse_active == true then return false end
+
+    -- Tell Glimpse which exact dk_track_* this recovery is targeting so its final
+    -- facing/safe checkpoint state matches the next waypoint the bot should pass.
+    antiState.pending_return_segment = nextIndex
+    antiState.pending_return_pos = Vector(target.x, target.y, target.z)
+    local ok = false
+    pcall(function()
+        ok = antiSkip:StartGlimpse(bot.player_id, bot.unit, target, antiState) == true
+    end)
+    if ok then
+        bot.current_speed = 0
+        bot.stuck_recovery_cooldown_until = now + (tonumber(self.config.stuck_recovery_cooldown) or 5.0)
+        self:ResetAntiStuckWatch(bot, now, bot.unit:GetAbsOrigin(), 0)
+        print("[DotaKartPublicAI] FIX124 anti-stuck Glimpse bot=" .. tostring(bot.player_id) .. " -> dk_track_" .. string.format("%03d", nextIndex))
+        return true
+    end
+    return false
+end
+
+function DotaKartPublicAI:UpdateAntiStuck(bot, now, pos)
+    if bot == nil or pos == nil then return false end
+    now = tonumber(now) or DKNow()
+    local nextIndex = tonumber(bot.next_index) or 1
+    local target = self:GetPoint(nextIndex)
+    if target == nil then return false end
+    local dist = DKDistance2D(pos, target)
+
+    if tonumber(bot.stuck_watch_index) ~= nextIndex or bot.stuck_best_distance == nil or bot.stuck_last_progress_time == nil then
+        self:ResetAntiStuckWatch(bot, now, pos, dist)
+        return false
+    end
+
+    -- Only a meaningful reduction resets the five-second timer. Tiny oscillations while
+    -- repeatedly hitting a wall/rock do not count as race progress.
+    local epsilon = tonumber(self.config.stuck_progress_epsilon) or 140
+    if dist <= (tonumber(bot.stuck_best_distance) or dist) - epsilon then
+        self:ResetAntiStuckWatch(bot, now, pos, dist)
+        return false
+    end
+
+    if now - (tonumber(bot.stuck_last_progress_time) or now) >= (tonumber(self.config.stuck_timeout) or 5.0) then
+        return self:TriggerAntiStuckGlimpse(bot, now)
+    end
+    return false
 end
 
 function DotaKartPublicAI:GetBestItemBoxTarget(bot, pos, fwd)
@@ -1390,6 +1487,57 @@ function DotaKartPublicAI:ChooseOvertakeSide(bot, pos, fwd, blocker)
     return side
 end
 
+function DotaKartPublicAI:UpdateCrystalCloneAvoidance(bot, pos, fwd, now)
+    local itemSystem = self.itemSystem or GameRules.DotaKartItemSystem
+    if itemSystem == nil then return end
+    bot.clone_dodge_decisions = bot.clone_dodge_decisions or {}
+    local best=nil; local bestDist=999999; local bestLat=0; local bestKey=nil
+    local right=Vector(-fwd.y,fwd.x,0)
+    local range = tonumber(self.config.crystal_clone_dodge_range) or 900
+
+    local function consider(key, hazardPos)
+        if hazardPos == nil then return end
+        local to=hazardPos-pos; local dist=DKLength2D(to)
+        if dist <= range and dist>60 then
+            local dir=DKNormalize2D(to,fwd); local dot=dir.x*fwd.x+dir.y*fwd.y
+            if dot>0.42 and dist<bestDist then
+                bestDist=dist; bestLat=to.x*right.x+to.y*right.y; bestKey=key
+            end
+        end
+    end
+
+    for id,data in pairs(itemSystem.activeCrystalClones or {}) do
+        if data and data.exploded~=true and DKValidUnit(data.unit) then
+            consider("clone:"..tostring(id), data.unit:GetAbsOrigin())
+        end
+    end
+
+    -- FIX121: Static Remnant uses the exact same imperfect 68% dodge logic.
+    -- The owner never triggers its own Remnant, so it has no reason to avoid it.
+    for id,data in pairs(itemSystem.activeStaticRemnants or {}) do
+        if data and data.exploded~=true and tonumber(data.owner_player_id)~=tonumber(bot.player_id) then
+            if (tonumber(data.end_time) or 0) > now then
+                consider("remnant:"..tostring(id), data.pos)
+            end
+        end
+    end
+
+    if bestKey==nil then
+        if (bot.clone_avoid_until or 0)<=now then bot.clone_avoid_offset=0 end
+        return
+    end
+    local decision=bot.clone_dodge_decisions[bestKey]
+    if decision==nil then
+        decision=DKRandomFloat(0,1) <= (tonumber(self.config.crystal_clone_dodge_chance) or 0.68)
+        bot.clone_dodge_decisions[bestKey]=decision
+    end
+    if decision then
+        local side=bestLat>=0 and -1 or 1
+        bot.clone_avoid_offset=side*(tonumber(self.config.crystal_clone_dodge_offset) or 340)
+        bot.clone_avoid_until=now+(tonumber(self.config.crystal_clone_dodge_hold) or 1.15)
+    end
+end
+
 function DotaKartPublicAI:UpdateOvertake(bot, pos, fwd, now)
     if now < (bot.next_overtake_check or 0) then return end
     bot.next_overtake_check = now + (tonumber(self.config.overtake_check_interval or 0.18) or 0.18)
@@ -1440,11 +1588,20 @@ end
 function DotaKartPublicAI:ThinkItemUse(bot, now)
     if now < (bot.next_item_check or 0) then return end
     bot.next_item_check = now + DKRandomFloat(self.config.item_use_check_min or 0.25, self.config.item_use_check_max or 0.65)
-    if now < (bot.next_item_use or 0) then return end
 
     local itemSystem = self.itemSystem or GameRules.DotaKartItemSystem
     if itemSystem == nil or itemSystem.itemDefs == nil then return end
     if itemSystem.rolling ~= nil and itemSystem.rolling[bot.player_id] ~= nil then return end
+
+    -- FIX124: a brewing Unstable Concoction may ignore the normal AI item cooldown
+    -- near detonation so the bot never intentionally waits long enough to self-stun.
+    local activeConcoction = itemSystem.activeConcoctions and itemSystem.activeConcoctions[bot.player_id] or nil
+    local concoctionUrgent = false
+    if activeConcoction ~= nil and activeConcoction.thrown ~= true then
+        local remaining = (tonumber(activeConcoction.explode_time) or now) - now
+        concoctionUrgent = remaining <= (tonumber(self.config.concoction_safety_remaining) or 1.75)
+    end
+    if now < (bot.next_item_use or 0) and not concoctionUrgent then return end
 
     local itemName = itemSystem:GetHeldItem(bot.player_id)
     if itemName == nil or itemName == "" then return end
@@ -1460,6 +1617,29 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
     local near = self:FindEnemy(bot, 650, nil, false)
     local behind = self:FindEnemy(bot, self.config.item_enemy_behind_radius or 1050, nil, true)
 
+    -- FIX124: Unstable Concoction Throw explicitly supports rear fire for bots.
+    -- If detonation is getting close, throw even without a target so the bot cannot
+    -- self-explode/self-stun merely because its random item-use cooldown was long.
+    if kind == "unstable_concoction_throw" then
+        local data = itemSystem.activeConcoctions and itemSystem.activeConcoctions[bot.player_id] or nil
+        local remaining = data and ((tonumber(data.explode_time) or now) - now) or 0
+        if DKValidUnit(behind) then
+            self:UseHeldItem(bot, true)
+        elseif DKValidUnit(ahead) or DKValidUnit(near) then
+            self:UseHeldItem(bot, false)
+        elseif remaining <= (tonumber(self.config.concoction_safety_remaining) or 1.75) then
+            self:UseHeldItem(bot, false)
+        end
+        return
+    elseif kind == "unstable_concoction" then
+        -- Start brewing when there is someone worth attacking; the safety branch above
+        -- guarantees the second use happens before the mixture can auto-explode.
+        if DKValidUnit(behind) or DKValidUnit(ahead) or DKValidUnit(near) or DKRandomFloat(0, 1) < 0.30 then
+            self:UseHeldItem(bot, false)
+        end
+        return
+    end
+
     -- FIX59: se há adversário próximo atrás, usa item para trás, EXCETO Hooks.
     -- Meat Hook/Hookshot para trás criam muito caos e foram excluídos conforme pedido.
     if DKValidUnit(behind) and kind ~= "meat_hook" and kind ~= "hookshot" then
@@ -1468,10 +1648,20 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
             self:UseHeldItem(bot, false)
             return
         elseif kind == "sacred_arrow" or kind == "swap_missile" or kind == "venomous_gale" or
-            kind == "chaos_bolt" or kind == "spectral_dagger" or kind == "battle_hunger" or kind == "x_marks" or kind == "ice_shards" or kind == "tornado" then
+            kind == "chaos_bolt" or kind == "spectral_dagger" or kind == "battle_hunger" or kind == "x_marks" or kind == "ice_shards" or kind == "tornado" or kind == "homing_missile" then
             self:UseHeldItem(bot, true)
             return
-        elseif kind == "star" or kind == "frost_shield" or kind == "power_cogs" or kind == "invisibility" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" then
+        elseif kind == "power_cogs" then
+            -- FIX122: first use deploys the orbiting Cogs; subsequent use throws one
+            -- backward when an opponent is detected behind.
+            local active = itemSystem.activeCogs and itemSystem.activeCogs[bot.player_id] or nil
+            if active ~= nil and itemSystem.GetActiveCogCount ~= nil and itemSystem:GetActiveCogCount(bot.player_id) > 0 then
+                self:UseHeldItem(bot, true)
+            else
+                self:UseHeldItem(bot, false)
+            end
+            return
+        elseif kind == "star" or kind == "frost_shield" or kind == "invisibility" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" then
             self:UseHeldItem(bot, false)
             return
         elseif kind == "nitro" then
@@ -1498,7 +1688,7 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
         if DKValidUnit(behind) or DKRandomFloat(0, 1) < 0.40 then self:UseHeldItem(bot, false) end
     elseif kind == "charge_darkness" or kind == "chain_frost" or kind == "item_steal" then
         if DKValidUnit(near) or DKValidUnit(ahead) then self:UseHeldItem(bot, false) end
-    elseif kind == "meat_hook" or kind == "hookshot" or kind == "sacred_arrow" or kind == "swap_missile" or kind == "venomous_gale" or kind == "chaos_bolt" or kind == "spectral_dagger" or kind == "battle_hunger" or kind == "x_marks" or kind == "ice_shards" or kind == "tornado" then
+    elseif kind == "meat_hook" or kind == "hookshot" or kind == "sacred_arrow" or kind == "swap_missile" or kind == "venomous_gale" or kind == "chaos_bolt" or kind == "spectral_dagger" or kind == "battle_hunger" or kind == "x_marks" or kind == "ice_shards" or kind == "tornado" or kind == "homing_missile" then
         if DKValidUnit(ahead) then self:UseHeldItem(bot, false) end
     else
         if DKRandomFloat(0, 1) < 0.20 then self:UseHeldItem(bot, false) end
@@ -1510,6 +1700,26 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
     if self.hud ~= nil and self.hud.IsPlayerFinished ~= nil and self.hud:IsPlayerFinished(bot.player_id) then return end
 
     local controller = self.controller or GameRules.DotaKartController
+
+    -- FIX121: enemy Astral must stop Public AI's manual movement too. In FIX120 the
+    -- controller knew the bot was imprisoned, but ThinkBot continued moving the unit
+    -- directly and some branches called RemoveNoDraw(), effectively cancelling Astral.
+    if controller ~= nil and controller.GetState ~= nil then
+        local astralState = controller:GetState(bot.player_id)
+        if astralState ~= nil and (tonumber(astralState.astral_enemy_until) or 0) > now then
+            bot.current_speed = 0
+            astralState.speed = 0
+            astralState.input = astralState.input or {}
+            astralState.input.forward = false
+            astralState.input.reverse = false
+            astralState.input.left = false
+            astralState.input.right = false
+            pcall(function() bot.unit:AddNoDraw() end)
+            self:ResetAntiStuckWatch(bot, now, bot.unit:GetAbsOrigin())
+            return
+        end
+    end
+
     if controller ~= nil and controller.IsKartStunned ~= nil then
         if controller:IsKartStunned(bot.player_id, now) or (controller.IsKartLocked ~= nil and controller:IsKartLocked(bot.player_id, now)) then
             -- FIX68: com o movimento manual do controller bloqueado para fake clients da IA,
@@ -1519,6 +1729,7 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
                 controller:UpdateKart(bot.player_id, bot.unit, st, dt or (self.config.tick_rate or 0.05), now)
             end
             pcall(function() bot.unit:RemoveNoDraw() end)
+            self:ResetAntiStuckWatch(bot, now, bot.unit:GetAbsOrigin())
             return
         end
     end
@@ -1540,6 +1751,7 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
         end
         pcall(function() bot.unit:SetForwardVector(bot.last_dir or bot.unit:GetForwardVector()) end)
         pcall(function() bot.unit:RemoveNoDraw() end)
+        self:ResetAntiStuckWatch(bot, now, bot.unit:GetAbsOrigin())
         self:ThinkItemUse(bot, now)
         return
     end
@@ -1557,7 +1769,9 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
     if target == nil then return end
 
     local pos = unit:GetAbsOrigin()
-    self:UpdateOvertake(bot, pos, DKNormalize2D(trackDir or bot.last_dir or Vector(1,0,0), Vector(1,0,0)), now)
+    local avoidDir = DKNormalize2D(trackDir or bot.last_dir or Vector(1,0,0), Vector(1,0,0))
+    self:UpdateCrystalCloneAvoidance(bot, pos, avoidDir, now)
+    self:UpdateOvertake(bot, pos, avoidDir, now)
     target, trackDir = self:GetOffsetTarget(bot)
     if target == nil then return end
 
@@ -1617,6 +1831,12 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
         finalPos = controller:MoveUnitWithKartPhysics(bot.player_id, unit, desired, moveDir, speed, dt)
     else
         unit:SetAbsOrigin(desired)
+    end
+
+    -- FIX124: if wall/rock collisions or any other obstruction prevent meaningful
+    -- progress for five seconds, Glimpse the bot to the next dk_track_* it should pass.
+    if self:UpdateAntiStuck(bot, now, finalPos or unit:GetAbsOrigin()) then
+        return
     end
 
     local yaw = DKNormalizeYaw(math.deg(DKAtan2(moveDir.y, moveDir.x)))

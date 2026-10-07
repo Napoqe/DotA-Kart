@@ -5,6 +5,7 @@ require("dotakart/hud_server")
 require("dotakart/auto_drive")
 require("dotakart/camera_server")
 require("dotakart/kart_controller")
+require("dotakart/anti_skip")
 require("dotakart/miner_system")
 require("dotakart/item_system")
 require("dotakart/ai/public_ai")
@@ -224,6 +225,66 @@ function Precache(context)
     PrecacheResource("particle", "particles/units/heroes/hero_crystalmaiden/maiden_crystal_clone_end_blast.vpcf", context)
     PrecacheResource("particle", "particles/units/heroes/hero_crystalmaiden/maiden_crystal_clone_end_shock.vpcf", context)
 
+    -- FIX120: Astral Imprisonment / Ball Lightning.
+    PrecacheResource("particle", "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_prison_start.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_prison.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_prison_ring.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_prison_end.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_arc.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_arc2.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_beams.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_end.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_glow.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_light.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_sphere.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_sphere_arcs.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_sphere_sparks.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail_base.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail_base_elec.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail_base_lgt.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail_cloud.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail_lrg.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail_swirl.vpcf", context)
+
+    -- FIX121: mobile Astral Shard visual, Static Remnant and anti-skip Glimpse.
+    PrecacheResource("particle", "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_prison_light.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_prison_top_orb.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_static_remnant_image.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_static_remnant_glow.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_static_remnant_points.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/stormspirit_static_remnant_shadow.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_stormspirit/storm_spirit_static_remnant_beam_ambient_arcs.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_anticipate_position.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_anticipate_position_trail.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_anticipate_position_warp.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_end_drop.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_glow.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_start_flare.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_start_flare_glows.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_start_lightning.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_start_position_circle.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_start_smoke.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_start_sparkly.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_start_tar_rope.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_start_target.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_start_trail.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_targetend.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_targetend_sphere.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_targetstart.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_trail_electric_rpe.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_trail_rope.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_travel.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_travel_sphere.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_disruptor/disruptor_glimpse_travel_sphere_glow.vpcf", context)
+
+    -- FIX122: Homing Missile.
+    PrecacheResource("model", "models/items/gyrocopter/dwarven_gyrocopter_off_hand/dwarven_gyrocopter_off_hand.vmdl", context)
+    -- FIX124: networked visual carrier for the custom Homing Missile.
+    PrecacheUnitByNameSync("npc_dota_gyrocopter_homing_missile", context)
+    PrecacheResource("particle", "particles/econ/items/gyrocopter/hero_gyrocopter_gyrotechnics/gyro_homing_missile_fuse.vpcf", context)
+
     -- FIX111: Torrent Storm.
     PrecacheResource("particle", "particles/units/heroes/hero_kunkka/kunkka_spell_torrent_wave.vpcf", context)
     PrecacheResource("particle", "particles/units/heroes/hero_kunkka/kunkka_spell_torrent_splash_scepter.vpcf", context)
@@ -435,6 +496,11 @@ function CAddonTemplateGameMode:InitGameMode()
 
     GameRules.DotaKartController = DotaKartController
     DotaKartController:Init(DotaKartHUD)
+
+    -- FIX121: anti-unfair-skip Glimpse system. It observes projected track progress
+    -- from the HUD and explicitly exempts official dk_track_skip shortcuts.
+    GameRules.DotaKartAntiSkip = DotaKartAntiSkip
+    DotaKartAntiSkip:Init(DotaKartHUD, DotaKartController)
 
     -- FIX115: map-specific mine workers; system is a no-op outside the mines map.
     GameRules.DotaKartMinerSystem = DotaKartMinerSystem
@@ -1651,6 +1717,40 @@ function CAddonTemplateGameMode:GetCountdownRawSound(seconds)
     return "sounds/vo/announcer/ann_custom_countdown_" .. string.format("%02d", seconds) .. ".vsnd"
 end
 
+function CAddonTemplateGameMode:IsRadiantTrackMap()
+    local mapName = ""
+    if GetMapName ~= nil then
+        pcall(function() mapName = string.lower(tostring(GetMapName() or "")) end)
+    end
+    return mapName == "radiant_track" or string.find(mapName, "radiant_track", 1, true) ~= nil
+end
+
+function CAddonTemplateGameMode:EmitCountdownSoundReliable(soundName)
+    if soundName == nil or soundName == "" then return end
+
+    -- FIX125: radiant_track was not reliably reproducing the global announcer events.
+    -- Route the registered 2D soundevent directly to each connected client on that map.
+    -- Other maps keep the existing global playback path.
+    if self:IsRadiantTrackMap() and EmitSoundOnClient ~= nil then
+        local delivered = false
+        for playerID = 0, 23 do
+            local valid = false
+            pcall(function() valid = PlayerResource:IsValidPlayerID(playerID) end)
+            if valid then
+                local player = nil
+                pcall(function() player = PlayerResource:GetPlayer(playerID) end)
+                if player ~= nil then
+                    local ok = pcall(function() EmitSoundOnClient(soundName, player) end)
+                    if ok then delivered = true end
+                end
+            end
+        end
+        if delivered then return end
+    end
+
+    pcall(function() EmitGlobalSound(soundName) end)
+end
+
 function CAddonTemplateGameMode:BroadcastCountdown(seconds, text, soundName, center, rawSoundName)
     local payload = {
         seconds = tonumber(seconds) or 0,
@@ -1661,15 +1761,14 @@ function CAddonTemplateGameMode:BroadcastCountdown(seconds, text, soundName, cen
         raw_sound = rawSoundName or ""
     }
 
-    -- FIX51: tenta tocar no servidor também. Para o cliente, a HUD recebe o mesmo evento
-    -- e tenta via Panorama. O soundevent dotakart_countdown_* é o caminho mais confiável.
+    -- FIX125: radiant_track uses a direct per-client server path because its global
+    -- announcer playback was unreliable. Panorama still receives both names as fallback.
     if soundName ~= nil and soundName ~= "" then
-        pcall(function() EmitGlobalSound(soundName) end)
-    end
-    if rawSoundName ~= nil and rawSoundName ~= "" then
-        pcall(function() EmitGlobalSound(rawSoundName) end)
+        self:EmitCountdownSoundReliable(soundName)
     end
 
+    -- Do not send a raw .vsnd through EmitGlobalSound: that API expects a registered
+    -- soundevent and could duplicate the client fallback. raw_sound remains in payload.
     CustomGameEventManager:Send_ServerToAllClients("dotakart_countdown_update", payload)
 end
 

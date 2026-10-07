@@ -12,6 +12,9 @@ LinkLuaModifier("modifier_dotakart_star", "dotakart/item_system.lua", LUA_MODIFI
 LinkLuaModifier("modifier_dotakart_root", "dotakart/item_system.lua", LUA_MODIFIER_MOTION_NONE)
 LinkLuaModifier("modifier_dotakart_burrow_airborne", "dotakart/item_system.lua", LUA_MODIFIER_MOTION_NONE)
 LinkLuaModifier("modifier_dotakart_frost_pulse_visual", "dotakart/item_system.lua", LUA_MODIFIER_MOTION_NONE)
+LinkLuaModifier("modifier_dotakart_astral_enemy", "dotakart/item_system.lua", LUA_MODIFIER_MOTION_NONE)
+LinkLuaModifier("modifier_dotakart_astral_self", "dotakart/item_system.lua", LUA_MODIFIER_MOTION_NONE)
+LinkLuaModifier("modifier_dotakart_ball_lightning", "dotakart/item_system.lua", LUA_MODIFIER_MOTION_NONE)
 
 
 local DK_EF_NODRAW = EF_NODRAW or 32
@@ -117,6 +120,52 @@ function modifier_dotakart_frost_pulse_visual:GetStatusEffectName()
 end
 function modifier_dotakart_frost_pulse_visual:StatusEffectPriority() return 10 end
 
+
+-- FIX120: Astral Imprisonment / Ball Lightning protection states.
+if modifier_dotakart_astral_enemy == nil then modifier_dotakart_astral_enemy = class({}) end
+function modifier_dotakart_astral_enemy:IsHidden() return true end
+function modifier_dotakart_astral_enemy:IsPurgable() return false end
+function modifier_dotakart_astral_enemy:OnCreated()
+    if IsServer() then pcall(function() self:GetParent():AddNoDraw() end) end
+end
+function modifier_dotakart_astral_enemy:OnDestroy()
+    if IsServer() then pcall(function() self:GetParent():RemoveNoDraw() end) end
+end
+function modifier_dotakart_astral_enemy:CheckState()
+    local s = {}
+    if MODIFIER_STATE_OUT_OF_GAME ~= nil then s[MODIFIER_STATE_OUT_OF_GAME] = true end
+    if MODIFIER_STATE_INVULNERABLE ~= nil then s[MODIFIER_STATE_INVULNERABLE] = true end
+    if MODIFIER_STATE_STUNNED ~= nil then s[MODIFIER_STATE_STUNNED] = true end
+    if MODIFIER_STATE_COMMAND_RESTRICTED ~= nil then s[MODIFIER_STATE_COMMAND_RESTRICTED] = true end
+    if MODIFIER_STATE_DISARMED ~= nil then s[MODIFIER_STATE_DISARMED] = true end
+    if MODIFIER_STATE_NO_UNIT_COLLISION ~= nil then s[MODIFIER_STATE_NO_UNIT_COLLISION] = true end
+    return s
+end
+
+if modifier_dotakart_astral_self == nil then modifier_dotakart_astral_self = class({}) end
+function modifier_dotakart_astral_self:IsHidden() return true end
+function modifier_dotakart_astral_self:IsPurgable() return false end
+function modifier_dotakart_astral_self:CheckState()
+    local s = {}
+    -- FIX122: Q self-cast must keep the custom kart controller fully operational.
+    -- Blocking item use is handled by DotaKartItemSystem state, so native MUTE/SILENCE
+    -- are intentionally avoided here because they can interfere with custom inputs/orders.
+    if MODIFIER_STATE_INVULNERABLE ~= nil then s[MODIFIER_STATE_INVULNERABLE] = true end
+    if MODIFIER_STATE_UNTARGETABLE ~= nil then s[MODIFIER_STATE_UNTARGETABLE] = true end
+    if MODIFIER_STATE_NO_UNIT_COLLISION ~= nil then s[MODIFIER_STATE_NO_UNIT_COLLISION] = true end
+    return s
+end
+
+if modifier_dotakart_ball_lightning == nil then modifier_dotakart_ball_lightning = class({}) end
+function modifier_dotakart_ball_lightning:IsHidden() return true end
+function modifier_dotakart_ball_lightning:IsPurgable() return false end
+function modifier_dotakart_ball_lightning:CheckState()
+    local s = {}
+    if MODIFIER_STATE_INVULNERABLE ~= nil then s[MODIFIER_STATE_INVULNERABLE] = true end
+    if MODIFIER_STATE_NO_UNIT_COLLISION ~= nil then s[MODIFIER_STATE_NO_UNIT_COLLISION] = true end
+    return s
+end
+
 function DotaKartItemSystem:Init(hud, controller)
     if self.initialized then return end
     self.initialized = true
@@ -148,6 +197,15 @@ function DotaKartItemSystem:Init(hud, controller)
     self.activeDoppelwalkDecoys = {}
     self.activeCrystalClones = {}
     self.activeShukuchi = {}
+    -- FIX120: Astral Imprisonment and hold-T Ball Lightning runtime state.
+    self.activeAstrals = {}
+    self.activeBallLightning = {}
+    -- FIX122: Ball Lightning is armed only after T is held briefly; quick taps keep the item.
+    self.pendingBallLightning = {}
+    -- FIX121: Static Remnants left behind when Ball Lightning depletes all charges.
+    self.activeStaticRemnants = {}
+    -- FIX122: Gyrocopter-style waypoint-following Homing Missiles.
+    self.activeHomingMissiles = {}
     self.nextDoppelTargetID = -1000
     self.naturesGraspRootImmunity = {}
     self.naturesGraspRootActiveUntil = {}
@@ -358,6 +416,33 @@ function DotaKartItemSystem:Init(hud, controller)
             sound_fire = { "sounds/weapons/hero/vengeful_spirit/magic_missile1.vsnd", "Hero_VengefulSpirit.MagicMissile" },
             sound_impact = { "sounds/weapons/hero/vengeful_spirit/magic_missile_impact.vsnd", "Hero_VengefulSpirit.MagicMissileImpact" },
             sound_swap = { "sounds/weapons/hero/vengeful_spirit/nether_swap.vsnd", "Hero_VengefulSpirit.NetherSwap" }
+        },
+        item_dotakart_homing_missile = {
+            label = "Homing Missile",
+            description = "Launches a waypoint-following missile at the racer one place ahead (S+T targets one place behind). It accelerates over time and stuns longer based on distance traveled.",
+            icon_type = "ability",
+            icon = "gyrocopter_homing_missile",
+            kind = "homing_missile",
+            quality = 6,
+            base_speed = 850,
+            acceleration = 260,
+            max_speed = 2450,
+            direct_radius = 900,
+            path_arrive_radius = 220,
+            hit_radius = 185,
+            timeout = 18.0,
+            min_stun = 2.5,
+            max_stun = 6.0,
+            -- FIX125: fly just above the road so the missile stays readable without floating too high.
+            flight_height = 50,
+            model_scale = 2.0,
+            visual_unit = "npc_dota_gyrocopter_homing_missile",
+            model = "models/items/gyrocopter/dwarven_gyrocopter_off_hand/dwarven_gyrocopter_off_hand.vmdl",
+            particle = "particles/econ/items/gyrocopter/hero_gyrocopter_gyrotechnics/gyro_homing_missile_fuse.vpcf",
+            sound_launch = { "dotakart_homing_missile_launch" },
+            sound_destroy = { "dotakart_homing_missile_destroy" },
+            sound_enemy = { "dotakart_homing_missile_enemy" },
+            sound_target = { "dotakart_homing_missile_target" }
         },
         item_shadow_blade = {
             label = "Charge of Darkness",
@@ -784,6 +869,61 @@ function DotaKartItemSystem:Init(hud, controller)
             particle_damage_arc = "particles/units/heroes/hero_weaver/weaver_shukuchi_damage_arc.vpcf",
             sound = { "dotakart_shukuchi" }
         },
+        item_dotakart_astral_imprisonment = {
+            label = "Astral Imprisonment",
+            description = "T imprisons the racer one place ahead for 4s (S+T targets one place behind); Q uses Astral on yourself, remaining visible and moving at normal speed while untargetable.",
+            icon_type = "ability", icon = "obsidian_destroyer_astral_imprisonment", kind = "astral_imprisonment", quality = 5,
+            cast_range = 1500, duration = 4.0,
+            particle_start = "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_prison_start.vpcf",
+            particle_prison = "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_prison.vpcf",
+            particle_ring = "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_prison_ring.vpcf",
+            -- FIX122: persistent mobile Shard-style visuals for Q self-cast.
+            particle_shard_self = "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_prison_light.vpcf",
+            particle_shard_orb = "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_prison_top_orb.vpcf",
+            particle_end = "particles/units/heroes/hero_obsidian_destroyer/obsidian_destroyer_prison_end.vpcf",
+            sound_cast = { "dotakart_astral_cast" },
+            sound_loop = { "dotakart_astral_loop" },
+            sound_stop = { "dotakart_astral_stop" }
+        },
+        item_dotakart_ball_lightning = {
+            label = "Ball Lightning",
+            description = "Hold T to become invulnerable volatile electricity and surge forward very quickly. Starts with 6000 distance charges; costs 1 charge per unit traveled and disjoints homing projectiles on cast. Depleting all charges leaves a Static Remnant.",
+            icon_type = "ability", icon = "storm_spirit_ball_lightning", kind = "ball_lightning", quality = 6,
+            charges = 6000, charges_distance = 6000, travel_speed = 1900, travel_acceleration = 5200, hold_time = 0.22,
+            remnant_duration = 12.0, remnant_activation_delay = 0.75, remnant_trigger_radius = 235,
+            remnant_slow_pct = 0.80, remnant_slow_duration = 0.8,
+            remnant_particles = {
+                "particles/units/heroes/hero_stormspirit/stormspirit_static_remnant_image.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_static_remnant_glow.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_static_remnant_points.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_static_remnant_shadow.vpcf",
+                "particles/units/heroes/hero_stormspirit/storm_spirit_static_remnant_beam_ambient_arcs.vpcf"
+            },
+            remnant_sound_plant = { "dotakart_static_remnant_plant" },
+            remnant_sound_explode = { "dotakart_static_remnant_explode" },
+            particle_main = "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning.vpcf",
+            particles_active = {
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_arc.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_arc2.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_beams.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_glow.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_light.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_sphere.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_sphere_arcs.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_sphere_sparks.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail_base.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail_base_elec.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail_base_lgt.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail_cloud.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail_lrg.vpcf",
+                "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_trail_swirl.vpcf"
+            },
+            particle_end = "particles/units/heroes/hero_stormspirit/stormspirit_ball_lightning_end.vpcf",
+            sound_start = { "dotakart_ball_lightning_start" },
+            sound_loop = { "dotakart_ball_lightning_loop" },
+            sound_end = { "dotakart_ball_lightning_end" }
+        },
         item_dotakart_crystal_clone = {
             label = "Crystal Clone",
             description = "Cria um clone estacionário da Crystal Maiden por 90s. Kart ou projétil que o atingir o explode, aplicando Frostbite/root por 2.5s em raio 600.",
@@ -932,6 +1072,9 @@ function DotaKartItemSystem:Init(hud, controller)
             { item = "item_dotakart_doppelwalk", weight = 16 },
             { item = "item_dotakart_crystal_clone", weight = 16 },
             { item = "item_dotakart_shukuchi", weight = 1 },
+            { item = "item_dotakart_astral_imprisonment", weight = 8 },
+            { item = "item_dotakart_ball_lightning", weight = 1 },
+            { item = "item_dotakart_homing_missile", weight = 4 },
             { item = "item_dotakart_torrent_storm", weight = 8 }
         },
         [2] = {
@@ -950,6 +1093,9 @@ function DotaKartItemSystem:Init(hud, controller)
             { item = "item_dotakart_doppelwalk", weight = 14 },
             { item = "item_dotakart_crystal_clone", weight = 14 },
             { item = "item_dotakart_shukuchi", weight = 2 },
+            { item = "item_dotakart_astral_imprisonment", weight = 8 },
+            { item = "item_dotakart_ball_lightning", weight = 2 },
+            { item = "item_dotakart_homing_missile", weight = 6 },
             { item = "item_dotakart_torrent_storm", weight = 8 },
             { item = "item_orb_of_venom", weight = 9 },
             { item = "item_shivas_guard", weight = 11 },
@@ -980,6 +1126,9 @@ function DotaKartItemSystem:Init(hud, controller)
             { item = "item_dotakart_doppelwalk", weight = 12 },
             { item = "item_dotakart_crystal_clone", weight = 12 },
             { item = "item_dotakart_shukuchi", weight = 4 },
+            { item = "item_dotakart_astral_imprisonment", weight = 8 },
+            { item = "item_dotakart_ball_lightning", weight = 4 },
+            { item = "item_dotakart_homing_missile", weight = 9 },
             { item = "item_dotakart_torrent_storm", weight = 8 },
             { item = "item_wind_waker", weight = 7 },
             { item = "item_mage_slayer", weight = 9 },
@@ -1008,6 +1157,9 @@ function DotaKartItemSystem:Init(hud, controller)
             { item = "item_dotakart_doppelwalk", weight = 9 },
             { item = "item_dotakart_crystal_clone", weight = 9 },
             { item = "item_dotakart_shukuchi", weight = 7 },
+            { item = "item_dotakart_astral_imprisonment", weight = 8 },
+            { item = "item_dotakart_ball_lightning", weight = 7 },
+            { item = "item_dotakart_homing_missile", weight = 12 },
             { item = "item_dotakart_torrent_storm", weight = 8 },
             { item = "item_wind_waker", weight = 9 },
             { item = "item_mage_slayer", weight = 10 },
@@ -1037,6 +1189,9 @@ function DotaKartItemSystem:Init(hud, controller)
             { item = "item_dotakart_doppelwalk", weight = 7 },
             { item = "item_dotakart_crystal_clone", weight = 7 },
             { item = "item_dotakart_shukuchi", weight = 10 },
+            { item = "item_dotakart_astral_imprisonment", weight = 8 },
+            { item = "item_dotakart_ball_lightning", weight = 11 },
+            { item = "item_dotakart_homing_missile", weight = 12 },
             { item = "item_dotakart_torrent_storm", weight = 8 },
             { item = "item_wind_waker", weight = 12 },
             { item = "item_mage_slayer", weight = 11 },
@@ -1067,6 +1222,9 @@ function DotaKartItemSystem:Init(hud, controller)
             { item = "item_dotakart_doppelwalk", weight = 5 },
             { item = "item_dotakart_crystal_clone", weight = 5 },
             { item = "item_dotakart_shukuchi", weight = 13 },
+            { item = "item_dotakart_astral_imprisonment", weight = 8 },
+            { item = "item_dotakart_ball_lightning", weight = 15 },
+            { item = "item_dotakart_homing_missile", weight = 10 },
             { item = "item_dotakart_torrent_storm", weight = 8 },
             { item = "item_wind_waker", weight = 14 },
             { item = "item_mage_slayer", weight = 10 },
@@ -1096,6 +1254,9 @@ function DotaKartItemSystem:Init(hud, controller)
             { item = "item_dotakart_doppelwalk", weight = 3 },
             { item = "item_dotakart_crystal_clone", weight = 3 },
             { item = "item_dotakart_shukuchi", weight = 16 },
+            { item = "item_dotakart_astral_imprisonment", weight = 8 },
+            { item = "item_dotakart_ball_lightning", weight = 19 },
+            { item = "item_dotakart_homing_missile", weight = 7 },
             { item = "item_dotakart_torrent_storm", weight = 8 },
             { item = "item_wind_waker", weight = 16 },
             { item = "item_spell_steal", weight = 15 },
@@ -1122,6 +1283,9 @@ function DotaKartItemSystem:Init(hud, controller)
             { item = "item_dotakart_doppelwalk", weight = 2 },
             { item = "item_dotakart_crystal_clone", weight = 2 },
             { item = "item_dotakart_shukuchi", weight = 18 },
+            { item = "item_dotakart_astral_imprisonment", weight = 8 },
+            { item = "item_dotakart_ball_lightning", weight = 23 },
+            { item = "item_dotakart_homing_missile", weight = 5 },
             { item = "item_dotakart_torrent_storm", weight = 8 },
             { item = "item_wind_waker", weight = 18 },
             { item = "item_spell_steal", weight = 16 },
@@ -1301,6 +1465,18 @@ function DotaKartItemSystem:Init(hud, controller)
     Convars:RegisterCommand("dk_give_crystal_clone", function()
         self:GiveItemToPlayer(0, "item_dotakart_crystal_clone", true)
     end, "DotA Kart: da Crystal Clone ao player 0", FCVAR_CHEAT)
+
+    Convars:RegisterCommand("dk_give_astral_imprisonment", function()
+        self:GiveItemToPlayer(0, "item_dotakart_astral_imprisonment", true)
+    end, "DotA Kart: da Astral Imprisonment ao player 0", FCVAR_CHEAT)
+
+    Convars:RegisterCommand("dk_give_ball_lightning", function()
+        self:GiveItemToPlayer(0, "item_dotakart_ball_lightning", true)
+    end, "DotA Kart: da Ball Lightning ao player 0", FCVAR_CHEAT)
+
+    Convars:RegisterCommand("dk_give_homing_missile", function()
+        self:GiveItemToPlayer(0, "item_dotakart_homing_missile", true)
+    end, "DotA Kart: gives Homing Missile to player 0", FCVAR_CHEAT)
 
     Convars:RegisterCommand("dk_give_torrent_storm", function()
         self:GiveItemToPlayer(0, "item_dotakart_torrent_storm", true)
@@ -2869,11 +3045,26 @@ function DotaKartItemSystem:LinePointHit(projectilePos, targetPos, radius)
     return DKLength2D(projectilePos, targetPos) <= (radius or 140)
 end
 
+-- FIX120: central protection used by Astral self/enemy and Ball Lightning.
+function DotaKartItemSystem:IsKartUntargetable(playerID)
+    playerID = tonumber(playerID)
+    if playerID == nil or playerID < 0 then return false end
+    local now = DKNow()
+    local st = self:GetState(playerID)
+    if st ~= nil then
+        if (tonumber(st.astral_enemy_until) or 0) > now then return true end
+        if (tonumber(st.astral_self_until) or 0) > now then return true end
+        if st.ball_lightning_active == true then return true end
+    end
+    if self.activeBallLightning ~= nil and self.activeBallLightning[playerID] ~= nil then return true end
+    return false
+end
+
 function DotaKartItemSystem:FindHeroHit(casterPlayerID, projectilePos, radius)
     for _, playerID in ipairs(self:GetRegisteredPlayerIDs()) do
         if playerID ~= casterPlayerID then
             local hero = self:GetHeroForPlayer(playerID)
-            if DKValidUnit(hero) and not self:IsPlayerStarActive(playerID) and not self:IsPlayerInvisible(playerID) and not (self.activeShukuchi and self.activeShukuchi[playerID]) then
+            if DKValidUnit(hero) and not self:IsPlayerStarActive(playerID) and not self:IsPlayerInvisible(playerID) and not (self.activeShukuchi and self.activeShukuchi[playerID]) and not self:IsKartUntargetable(playerID) then
                 if self:LinePointHit(projectilePos, hero:GetAbsOrigin(), radius) then
                     self:NotifyBattleHungerItemHit(casterPlayerID, playerID)
                     return hero, playerID
@@ -2910,6 +3101,8 @@ end
 function DotaKartItemSystem:ApplyKartStun(caster, target, duration)
     if not DKValidUnit(target) then return end
     if self:IsHeroStarActive(target) then return end
+    local protectedPID = self:GetPlayerIDForHero(target)
+    if protectedPID ~= nil and protectedPID >= 0 and self:IsKartUntargetable(protectedPID) then return end
 
     local dur = math.max(0.05, tonumber(duration) or 0.5)
     local targetPlayerID = self:GetPlayerIDForHero(target)
@@ -2938,6 +3131,7 @@ function DotaKartItemSystem:ApplyKartSlow(caster, target, duration, slowPct, rec
     if self:IsHeroStarActive(target) then return end
 
     local targetPlayerID = self:GetPlayerIDForHero(target)
+    if targetPlayerID ~= nil and targetPlayerID >= 0 and self:IsKartUntargetable(targetPlayerID) then return end
     local casterPlayerID = self:GetPlayerIDForHero(caster)
     if casterPlayerID ~= nil and casterPlayerID >= 0 and targetPlayerID ~= nil and targetPlayerID >= 0 then
         self:NotifyBattleHungerItemHit(casterPlayerID, targetPlayerID)
@@ -3028,7 +3222,7 @@ function DotaKartItemSystem:PullHeroToCaster(casterPlayerID, caster, targetPlaye
 
     GameRules:GetGameModeEntity():SetContextThink("DotaKartMeatHookPullHero_" .. tostring(serial), function()
         if not DKValidUnit(caster) or not DKValidUnit(target) then return nil end
-        if self:IsPlayerStarActive(targetPlayerID) then return nil end
+        if self:IsPlayerStarActive(targetPlayerID) or self:IsKartUntargetable(targetPlayerID) then return nil end
 
         local now = DKNow()
         local targetPos = target:GetAbsOrigin()
@@ -3662,7 +3856,7 @@ function DotaKartItemSystem:UseVenomousGale(playerID, itemName, def)
         for _, otherID in ipairs(self:GetRegisteredPlayerIDs()) do
             if tonumber(otherID) ~= tonumber(playerID) and hitPlayers[otherID] ~= true then
                 local other = self:GetHeroForPlayer(otherID)
-                if DKValidUnit(other) and not self:IsPlayerStarActive(otherID) and DKLength2D(p, other:GetAbsOrigin()) <= radius then
+                if DKValidUnit(other) and not self:IsPlayerStarActive(otherID) and not self:IsKartUntargetable(otherID) and DKLength2D(p, other:GetAbsOrigin()) <= radius then
                     hitPlayers[otherID] = true
                     self:ApplyKartSlow(caster, other, def.duration or 15.0, def.slow_pct or 0.50, def.recover_pct_per_tick or 0.001, def.recover_tick or 0.03)
                     self:EmitKartSound(other, def.sound_impact, p)
@@ -4103,7 +4297,7 @@ function DotaKartItemSystem:LaunchOneCog(playerID, itemName, def)
         for _, otherID in ipairs(self:GetRegisteredPlayerIDs()) do
             if tonumber(otherID) ~= tonumber(playerID) or allowSelfHit then
                 local other = self:GetHeroForPlayer(otherID)
-                if DKValidUnit(other) and DKLength2D(pos, other:GetAbsOrigin()) <= radius then
+                if DKValidUnit(other) and not self:IsKartUntargetable(otherID) and DKLength2D(pos, other:GetAbsOrigin()) <= radius then
                     self:ShockCogTarget(playerID, cog, otherID, other, def)
                     return nil
                 end
@@ -4407,7 +4601,7 @@ function DotaKartItemSystem:FrostShieldPulse(playerID, data, now)
     for _, otherID in ipairs(self:GetRegisteredPlayerIDs()) do
         if tonumber(otherID) ~= tonumber(playerID) then
             local other = self:GetHeroForPlayer(otherID)
-            if DKValidUnit(other) and not self:IsPlayerStarActive(otherID) and DKLength2D(casterPos, other:GetAbsOrigin()) <= radius then
+            if DKValidUnit(other) and not self:IsPlayerStarActive(otherID) and not self:IsKartUntargetable(otherID) and DKLength2D(casterPos, other:GetAbsOrigin()) <= radius then
                 hitCount = hitCount + 1
                 local slowDuration = tonumber(def.pulse_slow_duration) or 0.5
                 self:ApplyKartSlow(caster, other, slowDuration, def.pulse_slow_pct or 0.35, 0, 0.03)
@@ -4470,6 +4664,7 @@ function DotaKartItemSystem:IsHomingValidTarget(casterPlayerID, targetPlayerID)
     if targetPlayerID < 0 then return false end
     if targetPlayerID == tonumber(casterPlayerID) then return false end
     if self:IsPlayerStarActive(targetPlayerID) then return false end
+    if self:IsKartUntargetable(targetPlayerID) then return false end
     if self:IsPlayerInvisible(targetPlayerID) then return false end
     local hero = self:GetHeroForPlayer(targetPlayerID)
     if not DKValidUnit(hero) then return false end
@@ -4494,6 +4689,7 @@ function DotaKartItemSystem:IsChainFrostValidTarget(casterPlayerID, candidateID,
     if candidateID == tonumber(casterPlayerID) then return false end
     if excludeImmediateID ~= nil and candidateID == tonumber(excludeImmediateID) then return false end
     if self:IsPlayerStarActive(candidateID) then return false end
+    if self:IsKartUntargetable(candidateID) then return false end
     if self:IsPlayerInvisible(candidateID) then return false end
 
     local hero = self:GetHeroForPlayer(candidateID)
@@ -4550,7 +4746,7 @@ end
 
 function DotaKartItemSystem:ChainFrostImpact(casterPlayerID, caster, targetPlayerID, target, remainingBounces, def)
     if not DKValidUnit(caster) or not DKValidUnit(target) then return end
-    if self:IsPlayerStarActive(targetPlayerID) then return end
+    if self:IsPlayerStarActive(targetPlayerID) or self:IsKartUntargetable(targetPlayerID) then return end
 
     -- FIX39: impacto em herói usa arquivos específicos hero01/02/03/lf + fallback genérico.
     self:EmitKartSound(target, def.sound_impact, target:GetAbsOrigin())
@@ -4758,7 +4954,7 @@ function DotaKartItemSystem:FindNearestEnemyKart(casterPlayerID, pos, radius)
     for _, playerID in ipairs(self:GetRegisteredPlayerIDs()) do
         if tonumber(playerID) ~= tonumber(casterPlayerID) then
             local hero = self:GetHeroForPlayer(playerID)
-            if DKValidUnit(hero) and not self:IsPlayerStarActive(playerID) and not self:IsPlayerInvisible(playerID) then
+            if DKValidUnit(hero) and not self:IsPlayerStarActive(playerID) and not self:IsPlayerInvisible(playerID) and not self:IsKartUntargetable(playerID) then
                 local hp = hero:GetAbsOrigin()
                 local dx = hp.x - pos.x
                 local dy = hp.y - pos.y
@@ -4796,7 +4992,7 @@ function DotaKartItemSystem:FindNearestEnemyKartInArc(casterPlayerID, pos, dir, 
     for _, otherID in ipairs(self:GetRegisteredPlayerIDs()) do
         if tonumber(otherID) ~= tonumber(casterPlayerID) then
             local other = self:GetHeroForPlayer(otherID)
-            if DKValidUnit(other) and not self:IsPlayerStarActive(otherID) and not self:IsPlayerInvisible(otherID) then
+            if DKValidUnit(other) and not self:IsPlayerStarActive(otherID) and not self:IsPlayerInvisible(otherID) and not self:IsKartUntargetable(otherID) then
                 local toTarget = other:GetAbsOrigin() - pos
                 local dist = DKLength2D(pos, other:GetAbsOrigin())
                 if dist <= radius then
@@ -4838,7 +5034,7 @@ end
 
 function DotaKartItemSystem:SwapKartPositions(casterPlayerID, caster, targetPlayerID, target, stunDuration)
     if not DKValidUnit(caster) or not DKValidUnit(target) then return end
-    if self:IsPlayerStarActive(targetPlayerID) then return end
+    if self:IsPlayerStarActive(targetPlayerID) or self:IsKartUntargetable(targetPlayerID) then return end
 
     local casterSt = self:GetState(casterPlayerID)
     local savedSpeed = casterSt and casterSt.speed or nil
@@ -4846,6 +5042,14 @@ function DotaKartItemSystem:SwapKartPositions(casterPlayerID, caster, targetPlay
     local savedBoostUntil = casterSt and casterSt.boost_until or nil
     local savedItemMaxUntil = casterSt and casterSt.item_max_speed_until or nil
     local savedItemMaxSpeed = casterSt and casterSt.item_max_speed or nil
+
+    -- FIX121: Swap Missile is a legitimate instantaneous relocation and must not
+    -- be mistaken for an illegal dk_track_* skip by the anti-skip system.
+    local antiSkip = GameRules and GameRules.DotaKartAntiSkip or nil
+    if antiSkip ~= nil and antiSkip.AuthorizeTeleport ~= nil then
+        pcall(function() antiSkip:AuthorizeTeleport(casterPlayerID, 1.5) end)
+        pcall(function() antiSkip:AuthorizeTeleport(targetPlayerID, 1.5) end)
+    end
 
     local casterPos = caster:GetAbsOrigin()
     local targetPos = target:GetAbsOrigin()
@@ -5153,7 +5357,7 @@ end
 
 function DotaKartItemSystem:ApplyBurrowKnockup(caster, targetPlayerID, target, def)
     if not DKValidUnit(target) then return end
-    if self:IsPlayerStarActive(targetPlayerID) then return end
+    if self:IsPlayerStarActive(targetPlayerID) or self:IsKartUntargetable(targetPlayerID) then return end
     local casterPlayerID = self:GetPlayerIDForHero(caster)
     if casterPlayerID ~= nil and casterPlayerID >= 0 then
         self:NotifyBattleHungerItemHit(casterPlayerID, targetPlayerID)
@@ -5290,6 +5494,7 @@ end
 function DotaKartItemSystem:ApplyKartRoot(caster, targetPlayerID, target, duration, def)
     if not DKValidUnit(target) then return false end
     if self:IsPlayerStarActive(targetPlayerID) then return false end
+    if self:IsKartUntargetable(targetPlayerID) then return false end
     self.naturesGraspRootImmunity = self.naturesGraspRootImmunity or {}
     self.naturesGraspRootActiveUntil = self.naturesGraspRootActiveUntil or {}
     local now = DKNow()
@@ -5695,6 +5900,10 @@ function DotaKartItemSystem:UpdateChargeOfDarkness(playerID, charge)
         self:CancelChargeOfDarkness(playerID, "finished_or_invalid")
         return false
     end
+    if self:IsKartUntargetable(targetID) or self:IsPlayerStarActive(targetID) or self:IsPlayerInvisible(targetID) then
+        self:CancelChargeOfDarkness(playerID, "target_protected")
+        return false
+    end
 
     local st = self:GetState(playerID)
     if st == nil then
@@ -5790,7 +5999,7 @@ function DotaKartItemSystem:UpdateChargeOfDarkness(playerID, charge)
     for _, otherID in ipairs(self:GetRegisteredPlayerIDs()) do
         if otherID ~= playerID then
             local other = self:GetHeroForPlayer(otherID)
-            if DKValidUnit(other) and not self:IsPlayerStarActive(otherID) then
+            if DKValidUnit(other) and not self:IsPlayerStarActive(otherID) and not self:IsKartUntargetable(otherID) then
                 local d = DKLength2D(caster:GetAbsOrigin(), other:GetAbsOrigin())
                 if d <= (def.bash_radius or 300) then
                     charge.bashCooldowns = charge.bashCooldowns or {}
@@ -5821,7 +6030,7 @@ function DotaKartItemSystem:UseChargeOfDarkness(playerID, itemName, def)
 
     local targetID = self:GetPlayerIDOnePlaceAhead(playerID)
     local target = self:GetHeroForPlayer(targetID)
-    if targetID < 0 or not DKValidUnit(target) then
+    if targetID < 0 or not DKValidUnit(target) or self:IsKartUntargetable(targetID) or self:IsPlayerStarActive(targetID) or self:IsPlayerInvisible(targetID) then
         print("[DotaKartItems] Charge of Darkness sem alvo valido para player " .. tostring(playerID))
         return false
     end
@@ -6050,7 +6259,7 @@ function DotaKartItemSystem:FindRandomItemStealVictim(casterPlayerID)
         if tonumber(otherID) ~= tonumber(casterPlayerID) then
             local hero = self:GetHeroForPlayer(otherID)
             local held = self:GetHeldItem(otherID)
-            if DKValidUnit(hero) and self:IsStealableHeldItem(held) and self.rolling[otherID] == nil then
+            if DKValidUnit(hero) and not self:IsKartUntargetable(otherID) and self:IsStealableHeldItem(held) and self.rolling[otherID] == nil then
                 table.insert(candidates, { playerID = tonumber(otherID), hero = hero, item = held, charges = self:GetItemStealCharges(otherID, held) })
             end
         end
@@ -6344,7 +6553,7 @@ function DotaKartItemSystem:UseTornado(playerID, itemName, def)
         for _, otherID in ipairs(self:GetRegisteredPlayerIDs()) do
             if tonumber(otherID) ~= tonumber(playerID) and hitPlayers[otherID] ~= true then
                 local other = self:GetHeroForPlayer(otherID)
-                if DKValidUnit(other) and not self:IsPlayerStarActive(otherID) and DKLength2D(pos, other:GetAbsOrigin()) <= radius then
+                if DKValidUnit(other) and not self:IsPlayerStarActive(otherID) and not self:IsKartUntargetable(otherID) and DKLength2D(pos, other:GetAbsOrigin()) <= radius then
                     hitPlayers[otherID] = true
                     self:NotifyBattleHungerItemHit(playerID, otherID)
                     self:ApplyKartCyclone(caster, other, def.cyclone_duration or 3.5, def.sound_target)
@@ -6901,7 +7110,7 @@ function DotaKartItemSystem:UpdateIceWalls(now)
                     table.insert(alive, seg)
                     self:DestroyDoppelDecoysInRadius(playerID, seg.pos, tonumber(def.segment_radius) or 175, "ice_wall")
                     for _, otherID in ipairs(self:GetRegisteredPlayerIDs()) do
-                        if tonumber(otherID) ~= tonumber(playerID) and not self:IsPlayerStarActive(otherID) then
+                        if tonumber(otherID) ~= tonumber(playerID) and not self:IsPlayerStarActive(otherID) and not self:IsKartUntargetable(otherID) then
                             local other = self:GetHeroForPlayer(otherID)
                             if DKValidUnit(other) and DKLength2D(seg.pos, other:GetAbsOrigin()) <= (tonumber(def.segment_radius) or 175) then
                                 self:ApplyKartSlow(caster, other, tonumber(def.slow_refresh) or 0.20, tonumber(def.slow_pct) or 0.60, 0, 0.03)
@@ -7032,7 +7241,7 @@ function DotaKartItemSystem:UseBattleHunger(playerID, itemName, def)
         return true
     end
     local target = self:GetHeroForPlayer(targetID)
-    if not DKValidUnit(target) or self:IsPlayerStarActive(targetID) then return true end
+    if not DKValidUnit(target) or self:IsPlayerStarActive(targetID) or self:IsKartUntargetable(targetID) then return true end
 
     -- Se o caster estiver atualmente como vítima de outro Battle Hunger, este cast é
     -- um item que atingiu outro kart e portanto quebra o efeito anterior primeiro.
@@ -7561,6 +7770,444 @@ function DotaKartItemSystem:UpdateShukuchi(now)
     end
 end
 
+-- ============================================================
+-- FIX120: Astral Imprisonment / Ball Lightning
+-- ============================================================
+function DotaKartItemSystem:GetAstralDesiredTarget(playerID, caster, def)
+    local range = tonumber(def.cast_range) or 1500
+    local st = self:GetState(playerID)
+    local backward = st ~= nil and st.input ~= nil and st.input.reverse == true and st.input.forward ~= true
+    local targetID = backward and self:GetPlayerIDOnePlaceBehind(playerID) or self:GetPlayerIDOnePlaceAhead(playerID)
+    if targetID ~= nil and targetID >= 0 and not self:IsKartUntargetable(targetID) and not self:IsPlayerStarActive(targetID) then
+        local target = self:GetHeroForPlayer(targetID)
+        if self:IsPlayerInvisible(targetID) then
+            local decoy = self:GetDoppelDecoyForOwner(targetID)
+            if decoy ~= nil and DKValidUnit(decoy.unit) then
+                target = decoy.unit
+                targetID = decoy.target_id
+            else
+                target = nil
+            end
+        end
+        if DKValidUnit(target) and DKLength2D(caster:GetAbsOrigin(), target:GetAbsOrigin()) <= range then
+            return target, targetID
+        end
+    end
+    return self:FindNearestEnemyKart(playerID, caster:GetAbsOrigin(), range)
+end
+
+function DotaKartItemSystem:CreateAstralStaticFX(target, def, duration)
+    local fxs = {}
+    if not DKValidUnit(target) or ParticleManager == nil then return fxs end
+    local pos = target:GetAbsOrigin()
+    if def.particle_start then self:CreateWorldParticle(def.particle_start, pos, 1.0) end
+    for _, name in ipairs({def.particle_prison, def.particle_ring}) do
+        if name and name ~= "" then
+            local fx = nil
+            pcall(function()
+                fx = ParticleManager:CreateParticle(name, PATTACH_WORLDORIGIN, nil)
+                ParticleManager:SetParticleControl(fx, 0, pos)
+            end)
+            if fx ~= nil then table.insert(fxs, fx) end
+        end
+    end
+    return fxs
+end
+
+function DotaKartItemSystem:CreateAstralFollowFX(target, def)
+    local fxs = {}
+    if not DKValidUnit(target) or ParticleManager == nil then return fxs end
+    local pos = target:GetAbsOrigin()
+    if def.particle_start then self:CreateWorldParticle(def.particle_start, pos, 1.0) end
+
+    -- FIX122: self Astral is the mobile Aghanim's Shard behavior. Attach the
+    -- visual directly to the kart so it follows reliably while the kart drives.
+    -- The unit itself remains visible.
+    for _, name in ipairs({def.particle_prison, def.particle_ring, def.particle_shard_self, def.particle_shard_orb}) do
+        if name and name ~= "" then
+            local fx = nil
+            pcall(function()
+                fx = ParticleManager:CreateParticle(name, PATTACH_ABSORIGIN_FOLLOW, target)
+                ParticleManager:SetParticleControlEnt(fx, 0, target, PATTACH_ABSORIGIN_FOLLOW, "attach_origin", pos, true)
+                ParticleManager:SetParticleControlEnt(fx, 1, target, PATTACH_ABSORIGIN_FOLLOW, "attach_origin", pos, true)
+            end)
+            if fx ~= nil then table.insert(fxs, fx) end
+        end
+    end
+    return fxs
+end
+
+function DotaKartItemSystem:FinishAstral(data, reason)
+    if data == nil or data.finished == true then return end
+    data.finished = true
+    local target = data.target
+    local playerID = tonumber(data.target_player_id) or -1
+    self.activeAstrals[playerID] = nil
+    if data.fxs and ParticleManager then
+        for _,fx in ipairs(data.fxs) do pcall(function() ParticleManager:DestroyParticle(fx,false); ParticleManager:ReleaseParticleIndex(fx) end) end
+    end
+    if DKValidUnit(target) then
+        pcall(function() target:RemoveModifierByName(data.self_cast and "modifier_dotakart_astral_self" or "modifier_dotakart_astral_enemy") end)
+        pcall(function() target:RemoveNoDraw() end)
+        if data.def and data.def.particle_end then self:CreateWorldParticle(data.def.particle_end, target:GetAbsOrigin(), 1.2) end
+        self:StopKartSound(target, data.def and data.def.sound_loop)
+        self:EmitKartSound(target, data.def and data.def.sound_stop, target:GetAbsOrigin())
+    end
+    local st = self:GetState(playerID)
+    if st ~= nil then
+        st.astral_enemy_until = 0
+        st.astral_self_until = 0
+    end
+end
+
+function DotaKartItemSystem:StartAstral(playerID, itemName, def, target, targetPlayerID, selfCast)
+    if not DKValidUnit(target) then return false end
+    targetPlayerID = tonumber(targetPlayerID) or -1
+    if targetPlayerID < 0 then return false end
+    local now = DKNow()
+    local existing = self.activeAstrals[targetPlayerID]
+    if existing ~= nil then
+        if existing.finished == true or not DKValidUnit(existing.target) or now >= (tonumber(existing.end_time) or 0) then
+            self:FinishAstral(existing, "stale_replace")
+        else
+            return false
+        end
+    end
+    local dur = tonumber(def.duration) or 4.0
+    local data = {caster_player_id=playerID,target_player_id=targetPlayerID,target=target,self_cast=selfCast==true,end_time=now+dur,def=def}
+    data.fxs = selfCast and self:CreateAstralFollowFX(target,def) or self:CreateAstralStaticFX(target,def,dur)
+    self.activeAstrals[targetPlayerID] = data
+    local st = self:GetState(targetPlayerID)
+    if st ~= nil then
+        if selfCast then
+            st.astral_self_until = data.end_time
+        else
+            st.astral_enemy_until = data.end_time; st.speed = 0
+        end
+    end
+    if selfCast then pcall(function() target:RemoveNoDraw() end) end
+    pcall(function() target:AddNewModifier(target,nil,selfCast and "modifier_dotakart_astral_self" or "modifier_dotakart_astral_enemy",{duration=dur}) end)
+    self:EmitKartSound(target,def.sound_cast,target:GetAbsOrigin())
+    self:EmitKartSound(target,def.sound_loop,target:GetAbsOrigin())
+    self:ConsumeHeldItem(playerID,itemName,def)
+    return true
+end
+
+function DotaKartItemSystem:UseAstralImprisonment(playerID,itemName,def)
+    local caster=self:GetHeroForPlayer(playerID); if not DKValidUnit(caster) then return false end
+    local target,targetID=self:GetAstralDesiredTarget(playerID,caster,def)
+    if not DKValidUnit(target) then return false end
+    if tonumber(targetID) and tonumber(targetID) <= -1000 then
+        local decoy=self:GetDoppelDecoyByTargetID(targetID)
+        if decoy then self:DestroyDoppelDecoy(decoy,"astral_imprisonment"); self:ConsumeHeldItem(playerID,itemName,def); return true end
+        return false
+    end
+    return self:StartAstral(playerID,itemName,def,target,targetID,false)
+end
+
+function DotaKartItemSystem:UseAstralSelf(playerID,itemName,def)
+    local caster=self:GetHeroForPlayer(playerID); if not DKValidUnit(caster) then return false end
+    return self:StartAstral(playerID,itemName,def,caster,playerID,true)
+end
+
+function DotaKartItemSystem:UseSelfItem(playerID)
+    local itemName=self:GetHeldItem(playerID); local def=self.itemDefs[itemName or ""]
+    if def == nil or def.kind ~= "astral_imprisonment" then return false end
+    local ok = self:UseAstralSelf(playerID,itemName,def)
+    if not ok then
+        self:SendItemHint(playerID, "ASTRAL SELF-CAST UNAVAILABLE", 1.4)
+    end
+    return ok
+end
+
+function DotaKartItemSystem:UpdateAstrals(now)
+    local finish={}
+    for _,data in pairs(self.activeAstrals or {}) do
+        if data and (not DKValidUnit(data.target) or now >= (data.end_time or 0)) then
+            table.insert(finish,data)
+        elseif data and data.self_cast == true and DKValidUnit(data.target) then
+            -- Attached Shard visuals follow the moving kart automatically in FIX122.
+            pcall(function() data.target:RemoveNoDraw() end)
+        end
+    end
+    for _,data in ipairs(finish) do self:FinishAstral(data,"expired") end
+end
+
+function DotaKartItemSystem:CreateBallLightningFX(caster,def)
+    local fxs={}; if not DKValidUnit(caster) or ParticleManager==nil then return fxs end
+    local names={def.particle_main}
+    for _,n in ipairs(def.particles_active or {}) do table.insert(names,n) end
+    for _,name in ipairs(names) do
+        if name and name~="" then
+            local fx=nil
+            pcall(function()
+                fx=ParticleManager:CreateParticle(name,PATTACH_ABSORIGIN_FOLLOW,caster)
+                ParticleManager:SetParticleControlEnt(fx,0,caster,PATTACH_ABSORIGIN_FOLLOW,"",caster:GetAbsOrigin(),true)
+            end)
+            if fx~=nil then table.insert(fxs,fx) end
+        end
+    end
+    return fxs
+end
+
+function DotaKartItemSystem:SendItemHint(playerID, text, duration)
+    if CustomGameEventManager == nil or PlayerResource == nil then return end
+    local player = PlayerResource:GetPlayer(tonumber(playerID) or -1)
+    if player ~= nil then
+        CustomGameEventManager:Send_ServerToPlayer(player, "dotakart_item_hint", {
+            text = tostring(text or ""),
+            duration = tonumber(duration) or 1.8
+        })
+    end
+end
+
+function DotaKartItemSystem:IsFakeClientPlayer(playerID)
+    if PlayerResource == nil or PlayerResource.IsFakeClient == nil then return false end
+    local ok, value = pcall(function() return PlayerResource:IsFakeClient(tonumber(playerID) or -1) end)
+    return ok and value == true
+end
+
+function DotaKartItemSystem:BeginBallLightningHold(playerID, itemName, def)
+    self.pendingBallLightning = self.pendingBallLightning or {}
+    if self.activeBallLightning and self.activeBallLightning[playerID] ~= nil then return true end
+    if self.pendingBallLightning[playerID] ~= nil then return true end
+
+    -- Public AI does not generate a physical key-up/key-down hold sequence.
+    if self:IsFakeClientPlayer(playerID) then
+        return self:UseBallLightning(playerID, itemName, def)
+    end
+
+    local holdTime = math.max(0.10, tonumber(def.hold_time) or 0.22)
+    local token = self:NextProjectileSerial()
+    self.pendingBallLightning[playerID] = { token = token, item_name = itemName, def = def, started = DKNow() }
+    GameRules:GetGameModeEntity():SetContextThink("DotaKartBallLightningArm_" .. tostring(playerID) .. "_" .. tostring(token), function()
+        local pending = self.pendingBallLightning and self.pendingBallLightning[playerID] or nil
+        if pending == nil or pending.token ~= token then return nil end
+        local st = self:GetState(playerID)
+        if st == nil or st.item_button_down ~= true or self:GetHeldItem(playerID) ~= itemName then
+            self.pendingBallLightning[playerID] = nil
+            return nil
+        end
+        local now = DKNow()
+        if self.controller ~= nil then
+            if (self.controller.IsKartStunned and self.controller:IsKartStunned(playerID, now)) or
+               (self.controller.IsKartLocked and self.controller:IsKartLocked(playerID, now)) then
+                self.pendingBallLightning[playerID] = nil
+                return nil
+            end
+        end
+        self.pendingBallLightning[playerID] = nil
+        self:UseBallLightning(playerID, itemName, def)
+        return nil
+    end, holdTime)
+    return true
+end
+
+function DotaKartItemSystem:EndBallLightning(playerID,reason)
+    local data=self.activeBallLightning and self.activeBallLightning[playerID]; if data==nil then return end
+    self.activeBallLightning[playerID]=nil
+    local caster=data.caster
+    local remnantPos = DKValidUnit(caster) and caster:GetAbsOrigin() or data.last_pos
+    if data.fxs and ParticleManager then for _,fx in ipairs(data.fxs) do pcall(function() ParticleManager:DestroyParticle(fx,false); ParticleManager:ReleaseParticleIndex(fx) end) end end
+    if DKValidUnit(caster) then
+        pcall(function() caster:RemoveModifierByName("modifier_dotakart_ball_lightning") end)
+        self:StopKartSound(caster,data.def and data.def.sound_loop)
+        if data.def and data.def.particle_end then self:CreateWorldParticle(data.def.particle_end,caster:GetAbsOrigin()+Vector(0,0,72),1.0) end
+        self:EmitKartSound(caster,data.def and data.def.sound_end,caster:GetAbsOrigin())
+    end
+    local st=self:GetState(playerID); if st then st.ball_lightning_active=false; st.ball_lightning_speed=0; st.ball_lightning_acceleration=0 end
+
+    -- FIX123: releasing T only PAUSES Ball Lightning. The item and remaining distance
+    -- charges stay in the slot and can be resumed by holding T again. It is consumed
+    -- only when the counter really reaches zero.
+    local remaining = math.max(0, math.ceil(tonumber(data.remaining) or 0))
+    if reason == "charges_empty" or remaining <= 0 then
+        self.itemCharges[playerID]=nil
+        if self:GetHeldItem(playerID)==data.item_name then self:SetHeldItemHUD(playerID,"",0) end
+        if remnantPos ~= nil then self:SpawnStaticRemnant(playerID, remnantPos, data.def) end
+    else
+        self.itemCharges[playerID]=remaining
+        if self:GetHeldItem(playerID)==data.item_name then
+            self:SetHeldItemHUD(playerID,data.item_name,remaining)
+        end
+    end
+end
+
+function DotaKartItemSystem:UseBallLightning(playerID,itemName,def)
+    if self.activeBallLightning[playerID]~=nil then return true end
+    local caster=self:GetHeroForPlayer(playerID); if not DKValidUnit(caster) then return false end
+    -- FIX123: resume from the charge count left by the previous T release.
+    local charges=tonumber(self.itemCharges[playerID]) or tonumber(def.charges_distance) or 6000
+    if charges <= 0 then return false end
+    local data={caster=caster,item_name=itemName,def=def,remaining=charges,last_pos=Vector(caster:GetAbsOrigin().x,caster:GetAbsOrigin().y,caster:GetAbsOrigin().z),last_hud=charges}
+    data.fxs=self:CreateBallLightningFX(caster,def)
+    self.activeBallLightning[playerID]=data
+    local st=self:GetState(playerID)
+    if st then st.ball_lightning_active=true; st.ball_lightning_speed=tonumber(def.travel_speed) or 1900; st.ball_lightning_acceleration=tonumber(def.travel_acceleration) or 5200 end
+    pcall(function() caster:AddNewModifier(caster,nil,"modifier_dotakart_ball_lightning",{duration=-1}) end)
+    self:EmitKartSound(caster,def.sound_start,caster:GetAbsOrigin())
+    self:EmitKartSound(caster,def.sound_loop,caster:GetAbsOrigin())
+    self.itemCharges[playerID]=charges
+    self:SetHeldItemHUD(playerID,itemName,math.floor(charges))
+    return true
+end
+
+function DotaKartItemSystem:OnItemButtonReleased(playerID)
+    if self.pendingBallLightning and self.pendingBallLightning[playerID] ~= nil then
+        self.pendingBallLightning[playerID] = nil
+        self:SendItemHint(playerID, "HOLD T TO USE BALL LIGHTNING", 2.0)
+        return true
+    end
+    if self.activeBallLightning and self.activeBallLightning[playerID] then self:EndBallLightning(playerID,"released"); return true end
+    return false
+end
+
+function DotaKartItemSystem:UpdateBallLightning(now)
+    local ending={}
+    for playerID,data in pairs(self.activeBallLightning or {}) do
+        local caster=data.caster
+        if not DKValidUnit(caster) then table.insert(ending,{playerID,"invalid"}) else
+            local pos=caster:GetAbsOrigin(); local dist=DKLength2D(data.last_pos,pos); data.last_pos=Vector(pos.x,pos.y,pos.z)
+            if dist<500 then data.remaining=math.max(0,(tonumber(data.remaining) or 0)-dist) end
+            local shown=math.max(0,math.ceil(data.remaining or 0)); self.itemCharges[playerID]=shown
+            if math.abs(shown-(tonumber(data.last_hud) or shown))>=25 then data.last_hud=shown; self:SetHeldItemHUD(playerID,data.item_name,shown) end
+            if (data.remaining or 0)<=0 then table.insert(ending,{playerID,"charges_empty"}) end
+        end
+    end
+    for _,e in ipairs(ending) do self:EndBallLightning(e[1],e[2]) end
+end
+
+
+-- ============================================================
+-- FIX121: Static Remnant created when Ball Lightning fully depletes.
+-- ============================================================
+function DotaKartItemSystem:CreateStaticRemnantFX(pos, def)
+    local fxs = {}
+    if pos == nil or ParticleManager == nil then return fxs end
+    for _,name in ipairs((def and def.remnant_particles) or {}) do
+        if name and name ~= "" then
+            local fx = nil
+            pcall(function()
+                fx = ParticleManager:CreateParticle(name, PATTACH_WORLDORIGIN, nil)
+                ParticleManager:SetParticleControl(fx, 0, pos)
+                ParticleManager:SetParticleControl(fx, 1, pos)
+            end)
+            if fx ~= nil then table.insert(fxs, fx) end
+        end
+    end
+    return fxs
+end
+
+function DotaKartItemSystem:DestroyStaticRemnantFX(data)
+    if data == nil or data.fxs == nil or ParticleManager == nil then return end
+    for _,fx in ipairs(data.fxs) do
+        pcall(function()
+            ParticleManager:DestroyParticle(fx, false)
+            ParticleManager:ReleaseParticleIndex(fx)
+        end)
+    end
+    data.fxs = nil
+end
+
+function DotaKartItemSystem:SpawnStaticRemnant(ownerPlayerID, pos, def)
+    if pos == nil then return nil end
+    def = def or self.itemDefs.item_dotakart_ball_lightning or {}
+    local now = DKNow()
+    local id = self:NextProjectileSerial()
+    local ground = Vector(pos.x, pos.y, pos.z)
+    local owner = self:GetHeroForPlayer(ownerPlayerID)
+    if DKValidUnit(owner) then ground.z = GetGroundHeight(ground, owner) end
+    local data = {
+        id = id,
+        owner_player_id = tonumber(ownerPlayerID) or -1,
+        pos = ground,
+        activation_time = now + (tonumber(def.remnant_activation_delay) or 0.75),
+        end_time = now + (tonumber(def.remnant_duration) or 12.0),
+        def = def,
+        exploded = false
+    }
+    data.fxs = self:CreateStaticRemnantFX(ground, def)
+    self.activeStaticRemnants[id] = data
+    self:EmitKartWorldSound(owner, def.remnant_sound_plant, ground)
+    return data
+end
+
+function DotaKartItemSystem:ExplodeStaticRemnant(data, reason)
+    if data == nil or data.exploded == true then return end
+    data.exploded = true
+    if self.activeStaticRemnants then self.activeStaticRemnants[data.id] = nil end
+    self:DestroyStaticRemnantFX(data)
+
+    local def = data.def or self.itemDefs.item_dotakart_ball_lightning or {}
+    local pos = data.pos
+    local owner = self:GetHeroForPlayer(data.owner_player_id)
+    if pos == nil then return end
+
+    self:EmitKartWorldSound(owner, def.remnant_sound_explode, pos)
+    -- Short explosion flash using the supplied Storm Spirit remnant assets.
+    for _,name in ipairs({
+        "particles/units/heroes/hero_stormspirit/stormspirit_static_remnant_points.vpcf",
+        "particles/units/heroes/hero_stormspirit/stormspirit_static_remnant_glow.vpcf",
+        "particles/units/heroes/hero_stormspirit/storm_spirit_static_remnant_beam_ambient_arcs.vpcf"
+    }) do
+        self:CreateWorldParticle(name, pos, 0.9)
+    end
+
+    local radius = tonumber(def.remnant_trigger_radius) or 235
+    local slowDuration = tonumber(def.remnant_slow_duration) or 0.8
+    local slowPct = tonumber(def.remnant_slow_pct) or 0.80
+
+    self:DestroyDoppelDecoysInRadius(data.owner_player_id, pos, radius, "static_remnant")
+    for _,otherID in ipairs(self:GetRegisteredPlayerIDs()) do
+        if tonumber(otherID) ~= tonumber(data.owner_player_id) then
+            local other = self:GetHeroForPlayer(otherID)
+            if DKValidUnit(other) and DKLength2D(pos, other:GetAbsOrigin()) <= radius then
+                self:ApplyKartSlow(owner or other, other, slowDuration, slowPct, 0, 0.03)
+            end
+        end
+    end
+end
+
+function DotaKartItemSystem:UpdateStaticRemnants(now)
+    local expired = {}
+    for id,data in pairs(self.activeStaticRemnants or {}) do
+        if data == nil or data.exploded == true then
+            table.insert(expired, id)
+        elseif now >= (tonumber(data.end_time) or 0) then
+            self:DestroyStaticRemnantFX(data)
+            table.insert(expired, id)
+        elseif now >= (tonumber(data.activation_time) or 0) then
+            local radius = tonumber(data.def and data.def.remnant_trigger_radius) or 235
+            local shouldExplode = false
+
+            -- Doppelwalk copies behave as enemy hero-like units for trap triggering.
+            for _,decoy in pairs(self.activeDoppelwalkDecoys or {}) do
+                if decoy and tonumber(decoy.owner_player_id) ~= tonumber(data.owner_player_id) and DKValidUnit(decoy.unit) then
+                    if DKLength2D(data.pos, decoy.unit:GetAbsOrigin()) <= radius then
+                        shouldExplode = true
+                        break
+                    end
+                end
+            end
+
+            if not shouldExplode then
+                for _,otherID in ipairs(self:GetRegisteredPlayerIDs()) do
+                    if tonumber(otherID) ~= tonumber(data.owner_player_id) and not self:IsKartUntargetable(otherID) then
+                        local other = self:GetHeroForPlayer(otherID)
+                        if DKValidUnit(other) and DKLength2D(data.pos, other:GetAbsOrigin()) <= radius then
+                            shouldExplode = true
+                            break
+                        end
+                    end
+                end
+            end
+
+            if shouldExplode then self:ExplodeStaticRemnant(data, "enemy_proximity") end
+        end
+    end
+    for _,id in ipairs(expired) do if self.activeStaticRemnants then self.activeStaticRemnants[id] = nil end end
+end
+
 function DotaKartItemSystem:UseCrystalClone(playerID,itemName,def)
     local caster=self:GetHeroForPlayer(playerID); if not DKValidUnit(caster) then return false end
     local pos=caster:GetAbsOrigin(); local clone=nil
@@ -7623,7 +8270,8 @@ function DotaKartItemSystem:ExplodeCrystalClone(data,reason)
         self:DestroyDoppelDecoysInRadius(data.owner_player_id, pos, tonumber(def.frostbite_radius) or 600, "crystal_clone_frostbite")
         for _,otherID in ipairs(self:GetRegisteredPlayerIDs()) do
             local other=self:GetHeroForPlayer(otherID)
-            if DKValidUnit(other) and DKLength2D(pos,other:GetAbsOrigin()) <= (tonumber(def.frostbite_radius) or 600) then
+            local ownerProtected = tonumber(otherID) == tonumber(data.owner_player_id) and data.owner_clear ~= true
+            if (not ownerProtected) and DKValidUnit(other) and DKLength2D(pos,other:GetAbsOrigin()) <= (tonumber(def.frostbite_radius) or 600) then
                 local frostDef = { root_immunity_after = 0, sound_root_hit = def.sound_frostbite }
                 if self:ApplyKartRoot(unit or other, otherID, other, tonumber(def.root_duration) or 2.5, frostDef) then
                     self:ApplyCrystalCloneFrostbiteVisuals(other, tonumber(def.root_duration) or 2.5, def)
@@ -7718,7 +8366,7 @@ function DotaKartItemSystem:CreateTorrentStormParticle(particleName, pos, durati
 end
 
 function DotaKartItemSystem:ApplyTorrentKnockup(casterPlayerID, caster, targetPlayerID, target, def)
-    if not DKValidUnit(target) or self:IsPlayerStarActive(targetPlayerID) then return end
+    if not DKValidUnit(target) or self:IsPlayerStarActive(targetPlayerID) or self:IsKartUntargetable(targetPlayerID) then return end
     local stunDur = tonumber(def.stun_duration) or 1.6
     local airDur = tonumber(def.knockup_duration) or 1.53
     local slowDur = tonumber(def.slow_duration) or 4.0
@@ -7778,7 +8426,7 @@ function DotaKartItemSystem:EruptTorrentStormTorrent(casterPlayerID, caster, def
     for _, otherID in ipairs(self:GetRegisteredPlayerIDs()) do
         if tonumber(otherID) ~= tonumber(casterPlayerID) then
             local other = self:GetHeroForPlayer(otherID)
-            if DKValidUnit(other) and not self:IsPlayerStarActive(otherID) and DKLength2D(pos, other:GetAbsOrigin()) <= radius then
+            if DKValidUnit(other) and not self:IsPlayerStarActive(otherID) and not self:IsKartUntargetable(otherID) and DKLength2D(pos, other:GetAbsOrigin()) <= radius then
                 self:NotifyBattleHungerItemHit(casterPlayerID, otherID)
                 self:ApplyTorrentKnockup(casterPlayerID, caster, otherID, other, def)
             end
@@ -7842,6 +8490,239 @@ function DotaKartItemSystem:UseTorrentStorm(playerID, itemName, def)
     return true
 end
 
+-- ============================================================
+-- FIX122: Homing Missile
+-- Follows dk_track_* waypoints until close to its locked adjacent-position target,
+-- then chases directly. Speed increases over time; stun scales with traveled distance.
+-- ============================================================
+function DotaKartItemSystem:GetHomingMissileStun(distance, def)
+    distance = math.max(0, tonumber(distance) or 0)
+    local points = {
+        {600, 2.5}, {1000, 3.0}, {1500, 4.0}, {3000, 5.0}, {5000, 6.0}
+    }
+    if distance <= points[1][1] then return tonumber(def.min_stun) or 2.5 end
+    for i = 1, #points - 1 do
+        local a, b = points[i], points[i + 1]
+        if distance <= b[1] then
+            local t = (distance - a[1]) / math.max(1, b[1] - a[1])
+            return a[2] + (b[2] - a[2]) * t
+        end
+    end
+    return tonumber(def.max_stun) or 6.0
+end
+
+function DotaKartItemSystem:SpawnHomingMissileVisual(def, pos, yaw, caster)
+    def = def or {}
+    local ent = nil
+    local model = def.model or "models/items/gyrocopter/dwarven_gyrocopter_off_hand/dwarven_gyrocopter_off_hand.vmdl"
+    local visualUnit = def.visual_unit or "npc_dota_gyrocopter_homing_missile"
+    local team = DOTA_TEAM_NEUTRALS or 4
+    if DKValidUnit(caster) and caster.GetTeamNumber ~= nil then
+        pcall(function() team = caster:GetTeamNumber() end)
+    end
+
+    -- FIX124: a prop_dynamic could remain invisible with some wearable-only Gyrocopter
+    -- models. Spawn the native networked Homing Missile unit first, then force the
+    -- requested model on it. This produces a real rendered flying entity on clients.
+    if CreateUnitByName ~= nil then
+        pcall(function()
+            ent = CreateUnitByName(visualUnit, pos, false, caster, caster, team)
+        end)
+    end
+
+    -- Fallback only if the native missile unit cannot be created on a particular build.
+    if ent == nil then
+        pcall(function()
+            ent = SpawnEntityFromTableSynchronous("prop_dynamic", {
+                model = model,
+                origin = tostring(pos.x) .. " " .. tostring(pos.y) .. " " .. tostring(pos.z),
+                angles = "0 " .. tostring(yaw or 0) .. " 0",
+                solid = "0"
+            })
+        end)
+    end
+
+    if ent ~= nil and (ent.IsNull == nil or not ent:IsNull()) then
+        pcall(function()
+            if ent.SetOriginalModel ~= nil then ent:SetOriginalModel(model) end
+            if ent.SetModel ~= nil then ent:SetModel(model) end
+            if ent.SetAbsOrigin ~= nil then ent:SetAbsOrigin(pos) end
+            if ent.SetAngles ~= nil then ent:SetAngles(0, yaw or 0, 0) end
+            if ent.SetForwardVector ~= nil then
+                local r = math.rad(yaw or 0)
+                ent:SetForwardVector(Vector(math.cos(r), math.sin(r), 0))
+            end
+            if ent.RemoveNoDraw ~= nil then ent:RemoveNoDraw() end
+            if ent.SetRenderAlpha ~= nil then ent:SetRenderAlpha(255) end
+            if ent.SetModelScale ~= nil then ent:SetModelScale(tonumber(def.model_scale) or 2.0) end
+            if ent.SetHullRadius ~= nil then ent:SetHullRadius(0) end
+            if ent.SetBaseMoveSpeed ~= nil then ent:SetBaseMoveSpeed(0) end
+            if ent.SetIdleAcquire ~= nil then ent:SetIdleAcquire(false) end
+            if ent.SetAcquisitionRange ~= nil then ent:SetAcquisitionRange(0) end
+            if ent.SetForceAttackTarget ~= nil then ent:SetForceAttackTarget(nil) end
+            if ent.SetAggroTarget ~= nil then ent:SetAggroTarget(nil) end
+            if ent.SetHealthBarOffset ~= nil then ent:SetHealthBarOffset(-1000) end
+            if DOTA_UNIT_CAP_NO_ATTACK ~= nil and ent.SetAttackCapability ~= nil then ent:SetAttackCapability(DOTA_UNIT_CAP_NO_ATTACK) end
+        end)
+    end
+
+    local fx = nil
+    if ent ~= nil and def.particle and ParticleManager ~= nil then
+        pcall(function()
+            fx = ParticleManager:CreateParticle(def.particle, PATTACH_ABSORIGIN_FOLLOW, ent)
+            ParticleManager:SetParticleControlEnt(fx, 0, ent, PATTACH_ABSORIGIN_FOLLOW, "", pos, true)
+            ParticleManager:SetParticleControlEnt(fx, 1, ent, PATTACH_ABSORIGIN_FOLLOW, "", pos, true)
+        end)
+    end
+    return ent, fx
+end
+
+function DotaKartItemSystem:DestroyHomingMissile(data, reason, playDestroySound)
+    if data == nil or data.destroyed == true then return end
+    data.destroyed = true
+    if self.activeHomingMissiles then self.activeHomingMissiles[data.serial] = nil end
+    local pos = data.pos
+    if data.fx ~= nil and ParticleManager ~= nil then
+        pcall(function() ParticleManager:DestroyParticle(data.fx, false); ParticleManager:ReleaseParticleIndex(data.fx) end)
+    end
+    if data.ent ~= nil and (data.ent.IsNull == nil or not data.ent:IsNull()) then
+        if pos == nil and data.ent.GetAbsOrigin ~= nil then pos = data.ent:GetAbsOrigin() end
+        pcall(function() UTIL_Remove(data.ent) end)
+    end
+    if playDestroySound ~= false and pos ~= nil then
+        self:EmitKartWorldSound(data.caster, data.def and data.def.sound_destroy, pos)
+    end
+end
+
+function DotaKartItemSystem:GetHomingLockedUnit(data)
+    if data == nil then return nil end
+    local targetID = tonumber(data.target_player_id) or -1
+    if targetID <= -1000 then
+        local decoy = self:GetDoppelDecoyByTargetID(targetID)
+        return decoy and decoy.unit or nil
+    end
+    if targetID < 0 then return nil end
+
+    -- Doppelwalk can fool an already-flying Homing Missile.
+    if self:IsPlayerInvisible(targetID) then
+        local decoy = self:GetDoppelDecoyForOwner(targetID)
+        if decoy ~= nil and DKValidUnit(decoy.unit) then
+            data.target_player_id = decoy.target_id
+            return decoy.unit
+        end
+    end
+
+    -- Shukuchi / Ball Lightning / Astral disjoint or invalidate the lock.
+    if (self.activeShukuchi and self.activeShukuchi[targetID]) or self:IsKartUntargetable(targetID) then
+        return nil
+    end
+    return self:GetHeroForPlayer(targetID)
+end
+
+function DotaKartItemSystem:UseHomingMissile(playerID, itemName, def)
+    local caster = self:GetHeroForPlayer(playerID)
+    if not DKValidUnit(caster) then return false end
+    local st = self:GetState(playerID)
+    local backward = st ~= nil and st.input ~= nil and st.input.reverse == true and st.input.forward ~= true
+    local targetID = backward and self:GetPlayerIDOnePlaceBehind(playerID) or self:GetPlayerIDOnePlaceAhead(playerID)
+    if targetID == nil or targetID < 0 then
+        self:SendItemHint(playerID, backward and "NO RACER ONE PLACE BEHIND" or "NO RACER ONE PLACE AHEAD", 1.5)
+        return true
+    end
+    if self:IsPlayerStarActive(targetID) or self:IsKartUntargetable(targetID) then return true end
+    local target = self:GetHeroForPlayer(targetID)
+    if self:IsPlayerInvisible(targetID) then
+        local decoy = self:GetDoppelDecoyForOwner(targetID)
+        if decoy ~= nil and DKValidUnit(decoy.unit) then target = decoy.unit; targetID = decoy.target_id else return true end
+    end
+    if not DKValidUnit(target) then return true end
+
+    local fwd = self:NormalizeDir2D(caster:GetForwardVector(), Vector(1,0,0))
+    if backward then fwd = fwd * -1 end
+    local raw = caster:GetAbsOrigin() + fwd * 145
+    local flightHeight = tonumber(def.flight_height) or 50
+    raw.z = GetGroundHeight(raw, caster) + flightHeight
+    local pos = Vector(raw.x, raw.y, raw.z)
+    local yaw = math.deg(DKAtan2(fwd.y, fwd.x))
+    local ent, fx = self:SpawnHomingMissileVisual(def, pos, yaw, caster)
+    if ent == nil then return false end
+
+    local serial = self:NextProjectileSerial()
+    local data = {
+        serial = serial, caster_player_id = playerID, caster = caster, target_player_id = targetID,
+        def = def, ent = ent, fx = fx, pos = pos, last_pos = Vector(pos.x,pos.y,pos.z),
+        traveled = 0, start_time = DKNow(), backward = backward, route = {}, destroyed = false
+    }
+    self.activeHomingMissiles[serial] = data
+    self:ConsumeHeldItem(playerID, itemName, def)
+    self:EmitKartWorldSound(caster, def.sound_launch, pos)
+    self:EmitKartSound(target, def.sound_target, target:GetAbsOrigin())
+    self:EmitKartSound(target, def.sound_enemy, target:GetAbsOrigin())
+
+    GameRules:GetGameModeEntity():SetContextThink("DotaKartHomingMissile_" .. tostring(serial), function()
+        if data.destroyed == true then return nil end
+        if data.ent == nil or (data.ent.IsNull ~= nil and data.ent:IsNull()) then self:DestroyHomingMissile(data,"visual_invalid",false); return nil end
+
+        local targetUnit = self:GetHomingLockedUnit(data)
+        if not DKValidUnit(targetUnit) then self:DestroyHomingMissile(data,"disjoint_or_invalid",true); return nil end
+        local now = DKNow()
+        if now - data.start_time >= (tonumber(def.timeout) or 18.0) then self:DestroyHomingMissile(data,"timeout",true); return nil end
+
+        local targetPos = targetUnit:GetAbsOrigin()
+        local toTarget = targetPos - data.pos; toTarget.z = 0
+        local distToTarget = DKLength2D(data.pos, targetPos)
+        local dir = nil
+        if distToTarget <= (tonumber(def.direct_radius) or 900) then
+            dir = self:NormalizeDir2D(toTarget, fwd)
+        else
+            dir = self:GetSpectralRouteDirection(data.pos, targetPos, data.route, data.backward)
+            if dir == nil then dir = self:NormalizeDir2D(toTarget, fwd) end
+        end
+
+        local elapsed = math.max(0, now - data.start_time)
+        local speed = math.min(tonumber(def.max_speed) or 2450, (tonumber(def.base_speed) or 850) + (tonumber(def.acceleration) or 260) * elapsed)
+        local dt = 0.03
+        local step = math.min(speed * dt, math.max(1, distToTarget))
+        local nextPos = data.pos + dir * step
+        -- FIX124: Homing Missile is a flying projectile, not a ground prop.
+        nextPos.z = GetGroundHeight(nextPos, targetUnit) + (tonumber(def.flight_height) or 50)
+        data.traveled = (tonumber(data.traveled) or 0) + DKLength2D(data.pos, nextPos)
+        data.last_pos = data.pos
+        data.pos = nextPos
+        local nextYaw = math.deg(DKAtan2(dir.y, dir.x))
+        pcall(function() data.ent:SetAbsOrigin(nextPos); data.ent:SetAngles(0,nextYaw,0) end)
+
+        local hitRadius = tonumber(def.hit_radius) or 185
+        if self:BlockProjectileWithPowerCog(playerID, nextPos, hitRadius * 0.90, "homing_missile_blocked") then
+            self:DestroyHomingMissile(data,"power_cog",true)
+            return nil
+        end
+        if self:HandleSpecialProjectileTargetHit(playerID, nextPos, hitRadius, "homing_missile") then
+            self:DestroyHomingMissile(data,"special_target",true)
+            return nil
+        end
+
+        local currentTarget = self:GetHomingLockedUnit(data)
+        if DKValidUnit(currentTarget) and DKLength2D(nextPos, currentTarget:GetAbsOrigin()) <= hitRadius then
+            local tid = tonumber(data.target_player_id) or -1
+            if tid <= -1000 then
+                local decoy = self:GetDoppelDecoyByTargetID(tid)
+                if decoy then self:DestroyDoppelDecoy(decoy,"homing_missile") end
+            elseif tid >= 0 and not self:IsPlayerStarActive(tid) and not self:IsKartUntargetable(tid) then
+                local stun = self:GetHomingMissileStun(data.traveled, def)
+                self:ApplyKartStun(caster, currentTarget, stun)
+                self:NotifyBattleHungerItemHit(playerID, tid)
+            end
+            self:DestroyHomingMissile(data,"impact",true)
+            return nil
+        end
+        return dt
+    end, 0.03)
+
+    print("[DotaKartItems] Player " .. tostring(playerID) .. " launched HOMING MISSILE target=" .. tostring(targetID) .. " " .. (backward and "backward" or "forward"))
+    return true
+end
+
 function DotaKartItemSystem:UseItem(playerID, itemName)
     local nowCheck = DKNow()
     if self.controller ~= nil then
@@ -7853,6 +8734,12 @@ function DotaKartItemSystem:UseItem(playerID, itemName)
             end
             return true
         end
+    end
+
+    local currentState = self:GetState(playerID)
+    if currentState ~= nil and ((tonumber(currentState.astral_enemy_until) or 0) > nowCheck or (tonumber(currentState.astral_self_until) or 0) > nowCheck) then
+        if self.config.debug then print("[DotaKartItems] Player " .. tostring(playerID) .. " tentou usar item durante Astral; bloqueado.") end
+        return true
     end
 
     -- Durante Item Steal pendente, nem usuario nem vitima podem gastar o icone temporario.
@@ -7942,6 +8829,12 @@ function DotaKartItemSystem:UseItem(playerID, itemName)
         return self:UseShukuchi(playerID, itemName, def)
     elseif def.kind == "crystal_clone" then
         return self:UseCrystalClone(playerID, itemName, def)
+    elseif def.kind == "astral_imprisonment" then
+        return self:UseAstralImprisonment(playerID, itemName, def)
+    elseif def.kind == "ball_lightning" then
+        return self:BeginBallLightningHold(playerID, itemName, def)
+    elseif def.kind == "homing_missile" then
+        return self:UseHomingMissile(playerID, itemName, def)
     elseif def.kind == "torrent_storm" then
         return self:UseTorrentStorm(playerID, itemName, def)
     elseif def.kind == "unstable_concoction" then
@@ -8108,7 +9001,7 @@ end
 
 function DotaKartItemSystem:ApplySpectralDaggerHit(caster, ownerPlayerID, targetPlayerID, target, def, pathExpireTime)
     if not DKValidUnit(target) then return end
-    if self:IsPlayerStarActive(targetPlayerID) then return end
+    if self:IsPlayerStarActive(targetPlayerID) or self:IsKartUntargetable(targetPlayerID) then return end
     local now = DKNow()
     if not self:IsSpectralPathBuffed(targetPlayerID, now) then
         self:ApplyKartSlow(caster, target, tonumber(def.slow_refresh) or 0.30, tonumber(def.slow_pct) or 0.10, 0, 0.03)
@@ -8433,6 +9326,7 @@ function DotaKartItemSystem:IsHomingValidTarget(ownerPlayerID,targetPlayerID)
     if targetPlayerID<=-1000 then local data=self:GetDoppelDecoyByTargetID(targetPlayerID); return data~=nil and tonumber(data.owner_player_id)~=tonumber(ownerPlayerID) end
     if targetPlayerID<0 or tonumber(ownerPlayerID)==targetPlayerID then return false end
     if self.activeShukuchi and self.activeShukuchi[targetPlayerID] then return false end
+    if self:IsKartUntargetable(targetPlayerID) then return false end
     if self:IsPlayerStarActive(targetPlayerID) or self:IsPlayerInvisible(targetPlayerID) then return false end
     return DKValidUnit(self:GetHeroForPlayer(targetPlayerID))
 end
@@ -8809,6 +9703,9 @@ function DotaKartItemSystem:OnThink()
     self:UpdateUnstableConcoctions(now)
     self:UpdateDoppelwalkDecoys(now)
     self:UpdateShukuchi(now)
+    self:UpdateAstrals(now)
+    self:UpdateBallLightning(now)
+    self:UpdateStaticRemnants(now)
     self:UpdateCrystalClones(now)
 
     if self.enabled then

@@ -657,4 +657,143 @@
 		spread_radius = "300.0"
 		preload_vsnds = 1
 	}
+
+	// FIX120: Astral Imprisonment / Ball Lightning
+	dotakart_astral_cast =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/obsidian_destroyer/astral_imprison_cast.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+		preload_vsnds = 1
+	}
+	dotakart_astral_loop =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/obsidian_destroyer/astral_imprison.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "81.0"
+		block_matching_entity = true
+		instance_limit = 1
+		preload_vsnds = 1
+	}
+	dotakart_astral_stop =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/obsidian_destroyer/astral_imprison_stop.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+		preload_vsnds = 1
+	}
+	dotakart_ball_lightning_start =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/storm_spirit/ball_lightning.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "86.0"
+		preload_vsnds = 1
+	}
+	dotakart_ball_lightning_loop =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/storm_spirit/ball_lightning_loop.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "86.0"
+		block_matching_entity = true
+		instance_limit = 1
+		preload_vsnds = 1
+	}
+	dotakart_ball_lightning_end =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/storm_spirit/ball_orchid_01.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+		preload_vsnds = 1
+	}
+
+
+	// FIX121: Static Remnant / anti-skip Glimpse
+	dotakart_static_remnant_plant =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/storm_spirit/static_remnant_plant.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+		preload_vsnds = 1
+	}
+	dotakart_static_remnant_explode =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/storm_spirit/static_remnant_explode.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+		preload_vsnds = 1
+	}
+	dotakart_glimpse_begin =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/disruptor/glimpse_begin.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "86.0"
+		preload_vsnds = 1
+	}
+	dotakart_glimpse_end =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/disruptor/glimpse_end.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+		preload_vsnds = 1
+	}
+
+
+	// FIX122: Homing Missile
+	dotakart_homing_missile_launch =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/gyrocopter/homing_missile.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "86.0"
+		preload_vsnds = 1
+	}
+	dotakart_homing_missile_destroy =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/gyrocopter/homing_missile_destroy.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+		preload_vsnds = 1
+	}
+	dotakart_homing_missile_enemy =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/gyrocopter/homing_missile_enemy.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+		preload_vsnds = 1
+	}
+	dotakart_homing_missile_target =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/gyrocopter/homing_missile_target.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+		preload_vsnds = 1
+	}
+
 }

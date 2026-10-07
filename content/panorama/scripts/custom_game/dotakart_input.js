@@ -165,16 +165,29 @@
         SendState(changed || true);
     }
 
-    function UseItem() {
+    function UseItem(pressed) {
         if (!ENABLED || typeof GameEvents === "undefined") return;
         var playerID = GetPlayerID();
         GameEvents.SendCustomGameEventToServer("dotakart_input_item", {
             PlayerID: playerID,
             player_id: playerID,
             playerID: playerID,
-            force_forward: input.force_forward ? 1 : 0
+            force_forward: input.force_forward ? 1 : 0,
+            pressed: pressed ? 1 : 0
         });
-        Msg("item p" + playerID);
+        Msg("item p" + playerID + " down=" + (pressed ? 1 : 0));
+    }
+
+    function UseSelfItem() {
+        if (!ENABLED || typeof GameEvents === "undefined") return;
+        var playerID = GetPlayerID();
+        // FIX123: route Q through the same proven server event channel used by T.
+        // The server sees self_cast=1 and calls UseSelfItem instead of normal T use.
+        GameEvents.SendCustomGameEventToServer("dotakart_input_item", {
+            PlayerID: playerID, player_id: playerID, playerID: playerID,
+            self_cast: 1, pressed: 1, force_forward: 0
+        });
+        Msg("self-item Q p" + playerID);
     }
 
     function AddCommand(name, callback) {
@@ -220,8 +233,14 @@
         AddCommand("+" + CMD.right, function () { SetKey("right", true); });
         AddCommand("-" + CMD.right, function () { SetKey("right", false); });
 
-        AddCommand("+" + CMD.item, function () { UseItem(); });
-        AddCommand("-" + CMD.item, function () { });
+        AddCommand("+" + CMD.item, function () { UseItem(true); });
+        AddCommand("-" + CMD.item, function () { UseItem(false); });
+
+        // FIX123: Q is a one-shot action. A plain command is more reliable than +/-
+        // for Dota's normal ability hotkey while the legacy +/- commands stay as fallback.
+        AddCommand("dotakart_self_item", function () { UseSelfItem(); });
+        AddCommand("+dotakart_self_item", function () { UseSelfItem(); });
+        AddCommand("-dotakart_self_item", function () { });
 
         AddCommand("+" + CMD.force_forward, function () { SetKey("force_forward", true); });
         AddCommand("-" + CMD.force_forward, function () { SetKey("force_forward", false); });
@@ -235,6 +254,7 @@
         BindKey("a", "+" + CMD.left);
         BindKey("d", "+" + CMD.right);
         BindKey("t", "+" + CMD.item);
+        BindKey("q", "dotakart_self_item");
         BindKey("r", "+" + CMD.force_forward);
 
         BindKey("W", "+" + CMD.forward);
@@ -242,6 +262,7 @@
         BindKey("A", "+" + CMD.left);
         BindKey("D", "+" + CMD.right);
         BindKey("T", "+" + CMD.item);
+        BindKey("Q", "dotakart_self_item");
         BindKey("R", "+" + CMD.force_forward);
     }
 
@@ -252,6 +273,7 @@
         Msg("bind a +" + CMD.left);
         Msg("bind d +" + CMD.right);
         Msg("bind t +" + CMD.item);
+        Msg("bind q dotakart_self_item  // Astral Imprisonment self-cast");
         Msg("bind r +" + CMD.force_forward + "  // segure R: Rear View; R+T: Spectral Dagger force-forward/atalho");
     }
 

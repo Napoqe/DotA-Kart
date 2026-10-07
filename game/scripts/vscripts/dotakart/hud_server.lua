@@ -1073,6 +1073,16 @@ function DotaKartHUD:UpdateSingleRacer(racer, now)
     racer.map_y = mapY or 0.5
     racer.map_angle = self:GetUnitMapAngle(unit) or 0
 
+    -- FIX121: validate sudden forward track jumps before committing lap/progress data.
+    -- Official dk_track_skip areas are exempted inside DotaKartAntiSkip.
+    local antiSkip = GameRules and GameRules.DotaKartAntiSkip or nil
+    if antiSkip ~= nil and antiSkip.OnRacerProjected ~= nil then
+        local ok, blockProgress = pcall(function()
+            return antiSkip:OnRacerProjected(racer, unit, pos, project, now)
+        end)
+        if ok and blockProgress == true then return end
+    end
+
     local distance = project.distance or 0
     local len = math.max(1, self.trackLength or 1)
 
