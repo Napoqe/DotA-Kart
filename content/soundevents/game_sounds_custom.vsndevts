@@ -796,4 +796,115 @@
 		preload_vsnds = 1
 	}
 
+
+	// FIX126: Plague Ward / The Swarm / Storm Hammer / Illusory Orb
+	dotakart_plague_ward_cast =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/venomancer/venomancer_plagueward_cast.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+		preload_vsnds = 1
+	}
+	dotakart_plague_ward_shoot =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/venomancer/venomancer_plagueward_shoot1.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "82.0"
+		preload_vsnds = 1
+	}
+	dotakart_plague_ward_impact =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/venomancer/venomancer_plagueward_impact1.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+		preload_vsnds = 1
+	}
+	dotakart_swarm_cast =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/weaver/swarm_cast.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "85.0"
+		preload_vsnds = 1
+	}
+	dotakart_swarm_projectile =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/weaver/swarm_projectile.vsnd"
+		volume = "0.9"
+		pitch = "1.0"
+		soundlevel = "81.0"
+		preload_vsnds = 1
+	}
+	dotakart_swarm_attach =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/weaver/swarm_attach.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+		preload_vsnds = 1
+	}
+	dotakart_storm_hammer_cast =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/sven/storm_bolt.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "86.0"
+		preload_vsnds = 1
+	}
+	dotakart_storm_hammer_impact =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/sven/storm_bolt_impact.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+		preload_vsnds = 1
+	}
+	dotakart_illusory_orb_cast =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/puck/illusory_orb.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+		preload_vsnds = 1
+	}
+	dotakart_illusory_orb_end =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/puck/illusory_orb_end.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "84.0"
+		preload_vsnds = 1
+	}
+	dotakart_dream_coil_cast =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/puck/dream_coil.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "86.0"
+		preload_vsnds = 1
+	}
+	dotakart_dream_coil_snap =
+	{
+		type = "dota_update_default"
+		vsnd_files = "sounds/weapons/hero/puck/dream_coil_snap.vsnd"
+		volume = "1.0"
+		pitch = "1.0"
+		soundlevel = "88.0"
+		preload_vsnds = 1
+	}
+
 }

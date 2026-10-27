@@ -1648,7 +1648,7 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
             self:UseHeldItem(bot, false)
             return
         elseif kind == "sacred_arrow" or kind == "swap_missile" or kind == "venomous_gale" or
-            kind == "chaos_bolt" or kind == "spectral_dagger" or kind == "battle_hunger" or kind == "x_marks" or kind == "ice_shards" or kind == "tornado" or kind == "homing_missile" then
+            kind == "chaos_bolt" or kind == "spectral_dagger" or kind == "battle_hunger" or kind == "x_marks" or kind == "ice_shards" or kind == "tornado" or kind == "homing_missile" or kind == "the_swarm" or kind == "storm_hammer" then
             self:UseHeldItem(bot, true)
             return
         elseif kind == "power_cogs" then
@@ -1661,7 +1661,7 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
                 self:UseHeldItem(bot, false)
             end
             return
-        elseif kind == "star" or kind == "frost_shield" or kind == "invisibility" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" then
+        elseif kind == "star" or kind == "frost_shield" or kind == "invisibility" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" or kind == "plague_ward" then
             self:UseHeldItem(bot, false)
             return
         elseif kind == "nitro" then
@@ -1680,15 +1680,22 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
 
     if kind == "nitro" then
         if DKValidUnit(ahead) or boxAhead ~= nil or DKRandomFloat(0, 1) < 0.45 then self:UseHeldItem(bot, false) end
-    elseif kind == "star" or kind == "invisibility" or kind == "frost_shield" or kind == "bloodlust" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" then
+    elseif kind == "star" or kind == "invisibility" or kind == "frost_shield" or kind == "bloodlust" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" or kind == "plague_ward" then
         if DKValidUnit(near) or DKRandomFloat(0, 1) < 0.30 then self:UseHeldItem(bot, false) end
+    elseif kind == "illusory_orb" then
+        local activeOrb = itemSystem.activeIllusoryOrbs and itemSystem.activeIllusoryOrbs[bot.player_id] or nil
+        if activeOrb ~= nil and activeOrb.destroyed ~= true then
+            if DKLength2D(pos, activeOrb.pos or pos) >= 800 or DKRandomFloat(0,1) < 0.45 then self:UseHeldItem(bot, false) end
+        elseif DKValidUnit(ahead) then
+            self:UseHeldItem(bot, false)
+        end
     elseif kind == "power_cogs" then
         if DKValidUnit(near) then self:UseHeldItem(bot, false) end
     elseif kind == "ice_wall" then
         if DKValidUnit(behind) or DKRandomFloat(0, 1) < 0.40 then self:UseHeldItem(bot, false) end
     elseif kind == "charge_darkness" or kind == "chain_frost" or kind == "item_steal" then
         if DKValidUnit(near) or DKValidUnit(ahead) then self:UseHeldItem(bot, false) end
-    elseif kind == "meat_hook" or kind == "hookshot" or kind == "sacred_arrow" or kind == "swap_missile" or kind == "venomous_gale" or kind == "chaos_bolt" or kind == "spectral_dagger" or kind == "battle_hunger" or kind == "x_marks" or kind == "ice_shards" or kind == "tornado" or kind == "homing_missile" then
+    elseif kind == "meat_hook" or kind == "hookshot" or kind == "sacred_arrow" or kind == "swap_missile" or kind == "venomous_gale" or kind == "chaos_bolt" or kind == "spectral_dagger" or kind == "battle_hunger" or kind == "x_marks" or kind == "ice_shards" or kind == "tornado" or kind == "homing_missile" or kind == "the_swarm" or kind == "storm_hammer" then
         if DKValidUnit(ahead) then self:UseHeldItem(bot, false) end
     else
         if DKRandomFloat(0, 1) < 0.20 then self:UseHeldItem(bot, false) end
@@ -1808,6 +1815,25 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
         st = controller:GetState(bot.player_id)
         if st ~= nil and (st.item_max_speed_until or 0) > now and (st.item_max_speed or 0) > maxSpeed then
             maxSpeed = st.item_max_speed
+        end
+    end
+
+    -- FIX130: Public AI owns its own movement, so it must mirror the controller's
+    -- dedicated exact-value slow channels. FIX129 only added these channels to
+    -- UpdateKart(), which public bots intentionally bypass during normal driving.
+    if st ~= nil then
+        local ignoreSlowEffects = (tonumber(st.shukuchi_until) or 0) > now
+            or st.ball_lightning_active == true
+            or (tonumber(st.astral_self_until) or 0) > now
+        if not ignoreSlowEffects then
+            local exactFactor = 1.0
+            if (tonumber(st.plague_ward_slow_until) or 0) > now then
+                exactFactor = exactFactor * (1.0 - DKClamp(tonumber(st.plague_ward_slow_pct) or 0.15, 0, 0.95))
+            end
+            if (tonumber(st.swarm_slow_until) or 0) > now then
+                exactFactor = exactFactor * (1.0 - DKClamp(tonumber(st.swarm_slow_pct) or 0, 0, 0.95))
+            end
+            maxSpeed = math.max(140, maxSpeed * exactFactor)
         end
     end
 

@@ -439,6 +439,12 @@ function DotaKartController:GetState(playerID)
             slow_initial_pct = 0,
             slow_recover_per_tick = 0.001,
             slow_tick = 0.03,
+            -- FIX129: dedicated non-stacking slow channels for Plague Ward / The Swarm.
+            -- Repeated Ward hits only refresh duration; Swarm sets the exact tick-scaled value.
+            plague_ward_slow_until = 0,
+            plague_ward_slow_pct = 0,
+            swarm_slow_until = 0,
+            swarm_slow_pct = 0,
             locked_until = 0,
             stunned_until = 0,
             stun_spin_yaw = 0,
@@ -685,6 +691,31 @@ function DotaKartController:SetKartSlow(playerID, duration, slowPct, recoverPerT
     st.slow_initial_pct = math.max(tonumber(st.slow_initial_pct or 0) or 0, pct)
     st.slow_recover_per_tick = tonumber(recoverPerTick) or 0.001
     st.slow_tick = tonumber(tickInterval) or 0.03
+end
+
+-- FIX129: fixed-value slow channels. These deliberately do NOT add on repeated hits.
+-- A new Plague Ward attack renews 15% for its full duration; a Swarm tick replaces
+-- the previous Swarm percentage with the new exact tick-scaled percentage.
+function DotaKartController:SetPlagueWardSlow(playerID, duration, slowPct)
+    local st = self:GetState(playerID)
+    local now = DKNow()
+    if (tonumber(st.shukuchi_until) or 0) > now then return end
+    st.plague_ward_slow_until = now + math.max(0.05, tonumber(duration) or 2.0)
+    st.plague_ward_slow_pct = DKClamp(tonumber(slowPct) or 0.15, 0, 0.95)
+end
+
+function DotaKartController:SetSwarmSlow(playerID, duration, slowPct)
+    local st = self:GetState(playerID)
+    local now = DKNow()
+    if (tonumber(st.shukuchi_until) or 0) > now then return end
+    st.swarm_slow_until = now + math.max(0.05, tonumber(duration) or 1.0)
+    st.swarm_slow_pct = DKClamp(tonumber(slowPct) or 0, 0, 0.95)
+end
+
+function DotaKartController:ClearSwarmSlow(playerID)
+    local st = self:GetState(playerID)
+    st.swarm_slow_until = 0
+    st.swarm_slow_pct = 0
 end
 
 -- FIX115: running over a miner applies a short, strong racing penalty without
@@ -1883,6 +1914,18 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         return
     end
 
+    -- FIX127: forward Storm Hammer temporarily owns the kart transform. Keep normal
+    -- acceleration/steering/stun movement from fighting the item while it carries the kart.
+    if st.storm_hammer_transport_active == true then
+        if now <= (tonumber(st.storm_hammer_transport_until) or 0) then
+            st.speed = 0
+            return
+        end
+        -- Safety cleanup if the projectile thinker was interrupted unexpectedly.
+        st.storm_hammer_transport_active = false
+        st.storm_hammer_transport_until = 0
+    end
+
     -- FIX26: stun de corrida desacelera e gira; item fica bloqueado no UseItem.
     if (st.stunned_until or 0) > now then
         self:UpdateStunnedKart(playerID, hero, st, dt, now)
@@ -1982,6 +2025,29 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         if self.config.offroad_debug and now - (st.last_offroad_debug or 0) > 1.0 then
             st.last_offroad_debug = now
             print("[DotaKartController] off-road p" .. tostring(playerID) .. " reason=" .. tostring(offroad.reason) .. " max=" .. tostring(math.floor(maxSpeed)))
+        end
+    end
+
+    -- FIX129: Plague Ward and The Swarm use independent exact-value channels so
+    -- repeated hits/ticks cannot accidentally accumulate through the generic slow state.
+    if not ignoreSlowEffects then
+        if (tonumber(st.plague_ward_slow_until) or 0) > now then
+            local wardSlow = DKClamp(tonumber(st.plague_ward_slow_pct) or 0.15, 0, 0.95)
+            maxSpeed = math.max(90, maxSpeed * (1.0 - wardSlow))
+            reverseMax = math.max(80, reverseMax * (1.0 - wardSlow * 0.55))
+            if (st.speed or 0) > maxSpeed then
+                st.speed = DKApproach(st.speed or 0, maxSpeed, (self.config.friction or 540) * 1.8 * dt)
+            end
+        end
+        if (tonumber(st.swarm_slow_until) or 0) > now then
+            local swarmSlow = DKClamp(tonumber(st.swarm_slow_pct) or 0, 0, 0.95)
+            if swarmSlow > 0 then
+                maxSpeed = math.max(90, maxSpeed * (1.0 - swarmSlow))
+                reverseMax = math.max(80, reverseMax * (1.0 - swarmSlow * 0.55))
+                if (st.speed or 0) > maxSpeed then
+                    st.speed = DKApproach(st.speed or 0, maxSpeed, (self.config.friction or 540) * 1.8 * dt)
+                end
+            end
         end
     end
 

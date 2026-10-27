@@ -193,8 +193,12 @@
         item_dotakart_shukuchi: { type: "ability", icon: "weaver_shukuchi", label: "Shukuchi", desc: "Disjoints homing items, becomes invisible/phased and gains 1.5x max speed for 4s; stuns racers passed through." },
         item_dotakart_crystal_clone: { type: "ability", icon: "crystal_maiden_crystal_clone", label: "Crystal Clone", desc: "Places a 90s Crystal Maiden clone that explodes on kart/projectile contact and Frostbites nearby racers." },
         item_dotakart_astral_imprisonment: { type: "ability", icon: "obsidian_destroyer_astral_imprisonment", label: "Astral Imprisonment", desc: "Imprisons an adjacent-position rival for 4s; Q self-casts for mobile invulnerable protection." },
-        item_dotakart_ball_lightning: { type: "ability", icon: "storm_spirit_ball_lightning", label: "Ball Lightning", desc: "Hold T to surge forward as invulnerable lightning using 6000 distance charges; exhausting them leaves a Static Remnant." },
+        item_dotakart_ball_lightning: { type: "ability", icon: "storm_spirit_ball_lightning", label: "Ball Lightning", desc: "Press T to activate; press T again to stop while preserving remaining charges. Reaching 0 charges removes the item and leaves a Static Remnant." },
         item_dotakart_homing_missile: { type: "ability", icon: "gyrocopter_homing_missile", label: "Homing Missile", desc: "Tracks the racer one place ahead through the course; S+T targets one place behind. Longer travel means a longer stun." },
+        item_dotakart_plague_ward: { type: "ability", icon: "venomancer_plague_ward", label: "Plague Ward", desc: "Orbits for 45s, blocks enemy projectiles and fires poison shots that slow without dealing damage." },
+        item_dotakart_the_swarm: { type: "ability", icon: "weaver_the_swarm", label: "The Swarm", desc: "Launches Beetles that latch onto enemy karts and build 3% movement slow every second for 16s." },
+        item_dotakart_storm_hammer: { type: "ability", icon: "sven_storm_bolt", label: "Storm Hammer", desc: "1700 range; stuns racers in a 300 AoE for 2.5s. Forward casts carry the kart only when a racer or Item Box target is acquired; S+T throws backward." },
+        item_dotakart_illusory_orb: { type: "ability", icon: "puck_illusory_orb", label: "Illusory Orb", desc: "Launches a slowing orb; press T again to teleport to it and create a short Dream Coil." },
         item_dotakart_torrent_storm: {
             type: "ability",
             icon: "kunkka_torrent",
@@ -887,6 +891,11 @@
         "item_dotakart_crystal_clone",
         "item_dotakart_astral_imprisonment",
         "item_dotakart_ball_lightning",
+        "item_dotakart_homing_missile",
+        "item_dotakart_plague_ward",
+        "item_dotakart_the_swarm",
+        "item_dotakart_storm_hammer",
+        "item_dotakart_illusory_orb",
         "item_dotakart_torrent_storm"
     ];
 
@@ -926,6 +935,10 @@
         item_dotakart_astral_imprisonment: { type: "ability", icon: "obsidian_destroyer_astral_imprisonment", label: "Astral Imprisonment" },
         item_dotakart_ball_lightning: { type: "ability", icon: "storm_spirit_ball_lightning", label: "Ball Lightning" },
         item_dotakart_homing_missile: { type: "ability", icon: "gyrocopter_homing_missile", label: "Homing Missile" },
+        item_dotakart_plague_ward: { type: "ability", icon: "venomancer_plague_ward", label: "Plague Ward" },
+        item_dotakart_the_swarm: { type: "ability", icon: "weaver_the_swarm", label: "The Swarm" },
+        item_dotakart_storm_hammer: { type: "ability", icon: "sven_storm_bolt", label: "Storm Hammer" },
+        item_dotakart_illusory_orb: { type: "ability", icon: "puck_illusory_orb", label: "Illusory Orb" },
         item_dotakart_torrent_storm: { type: "ability", icon: "kunkka_torrent", label: "Torrent Storm" }
     };
 
@@ -1519,7 +1532,7 @@
 })();
 
 // ============================================================
-// FIX122: local item-use hints (e.g. Ball Lightning hold-T instruction).
+// FIX122 legacy local item-use hints; Ball Lightning changed to T-toggle in FIX131.
 // ============================================================
 (function () {
     "use strict";

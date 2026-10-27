@@ -284,6 +284,37 @@ function Precache(context)
     -- FIX124: networked visual carrier for the custom Homing Missile.
     PrecacheUnitByNameSync("npc_dota_gyrocopter_homing_missile", context)
     PrecacheResource("particle", "particles/econ/items/gyrocopter/hero_gyrocopter_gyrotechnics/gyro_homing_missile_fuse.vpcf", context)
+    -- FIX126: Plague Ward / The Swarm / Storm Hammer / Illusory Orb.
+    PrecacheResource("model", "models/heroes/venomancer/venomancer_ward.vmdl", context)
+    PrecacheResource("model", "models/heroes/weaver/weaver_bug.vmdl", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_venomancer/venomancer_plague_ward_projectile.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_venomancer/venomancer_plague_ward_projectile_explosion.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_venomancer/venomancer_plague_ward_projectile_explosion_flash.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_venomancer/venomancer_plague_ward_projectile_launch.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_venomancer/venomancer_plague_ward_projectile_trail.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_weaver/weaver_swarm_projectile.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_sven/sven_spell_storm_bolt.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_puck/puck_illusory_orb.vpcf", context)
+    -- FIX129: explicit native child components used as robust visual fallback.
+    PrecacheResource("particle", "particles/units/heroes/hero_puck/puck_illusory_orb_main.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_puck/puck_illusory_orb_glow.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_puck/puck_illusory_orb_sphere_sparks.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_puck/puck_illusory_orb_mist.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_puck/puck_dreamcoil_tether_break.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_puck/puck_dreamcoil_tether.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_puck/puck_dreamcoil_start.vpcf", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/venomancer/venomancer_plagueward_cast.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/venomancer/venomancer_plagueward_shoot1.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/venomancer/venomancer_plagueward_impact1.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/weaver/swarm_cast.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/weaver/swarm_projectile.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/weaver/swarm_attach.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/sven/storm_bolt.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/sven/storm_bolt_impact.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/puck/illusory_orb.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/puck/illusory_orb_end.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/puck/dream_coil.vsnd", context)
+    PrecacheResource("soundfile", "sounds/weapons/hero/puck/dream_coil_snap.vsnd", context)
 
     -- FIX111: Torrent Storm.
     PrecacheResource("particle", "particles/units/heroes/hero_kunkka/kunkka_spell_torrent_wave.vpcf", context)
@@ -1725,30 +1756,52 @@ function CAddonTemplateGameMode:IsRadiantTrackMap()
     return mapName == "radiant_track" or string.find(mapName, "radiant_track", 1, true) ~= nil
 end
 
-function CAddonTemplateGameMode:EmitCountdownSoundReliable(soundName)
-    if soundName == nil or soundName == "" then return end
+function CAddonTemplateGameMode:GetRadiantTrackAnnouncerSound(seconds)
+    seconds = math.floor(tonumber(seconds) or 0)
+    if seconds >= 1 and seconds <= 10 then
+        return "announcer_ann_custom_countdown_" .. string.format("%02d", seconds)
+    end
+    if seconds <= 0 then
+        return "announcer_announcer_battle_begin_01"
+    end
+    return nil
+end
 
-    -- FIX125: radiant_track was not reliably reproducing the global announcer events.
-    -- Route the registered 2D soundevent directly to each connected client on that map.
-    -- Other maps keep the existing global playback path.
-    if self:IsRadiantTrackMap() and EmitSoundOnClient ~= nil then
-        local delivered = false
-        for playerID = 0, 23 do
-            local valid = false
-            pcall(function() valid = PlayerResource:IsValidPlayerID(playerID) end)
-            if valid then
-                local player = nil
-                pcall(function() player = PlayerResource:GetPlayer(playerID) end)
-                if player ~= nil then
-                    local ok = pcall(function() EmitSoundOnClient(soundName, player) end)
-                    if ok then delivered = true end
+function CAddonTemplateGameMode:EmitCountdownSoundReliable(soundName, seconds)
+    if soundName == nil or soundName == "" then return false end
+
+    -- FIX131: radiant_track now uses Dota's built-in announcer VO events directly.
+    -- Those events are already registered by the base game (announcer_ann_custom_countdown_01..10)
+    -- and avoid depending on addon soundevent loading on this specific map. Mines and every
+    -- other map keep the exact path that is already known to work.
+    if self:IsRadiantTrackMap() then
+        local announcerEvent = self:GetRadiantTrackAnnouncerSound(seconds)
+        if announcerEvent ~= nil and announcerEvent ~= "" then
+            local delivered = false
+            if EmitAnnouncerSoundForPlayer ~= nil and PlayerResource ~= nil then
+                for playerID = 0, 23 do
+                    local valid = false
+                    pcall(function() valid = PlayerResource:IsValidPlayerID(playerID) end)
+                    if valid then
+                        local player = nil
+                        pcall(function() player = PlayerResource:GetPlayer(playerID) end)
+                        if player ~= nil then
+                            local ok = pcall(function() EmitAnnouncerSoundForPlayer(announcerEvent, playerID) end)
+                            if ok then delivered = true end
+                        end
+                    end
                 end
             end
+            if not delivered and EmitAnnouncerSound ~= nil then
+                local ok = pcall(function() EmitAnnouncerSound(announcerEvent) end)
+                delivered = ok
+            end
+            if delivered then return true end
         end
-        if delivered then return end
     end
 
     pcall(function() EmitGlobalSound(soundName) end)
+    return true
 end
 
 function CAddonTemplateGameMode:BroadcastCountdown(seconds, text, soundName, center, rawSoundName)
@@ -1764,7 +1817,14 @@ function CAddonTemplateGameMode:BroadcastCountdown(seconds, text, soundName, cen
     -- FIX125: radiant_track uses a direct per-client server path because its global
     -- announcer playback was unreliable. Panorama still receives both names as fallback.
     if soundName ~= nil and soundName ~= "" then
-        self:EmitCountdownSoundReliable(soundName)
+        self:EmitCountdownSoundReliable(soundName, seconds)
+    end
+
+    -- FIX131: radiant_track audio is emitted through the built-in announcer API above.
+    -- Keep the HUD event for text only so Panorama cannot double-play a second sound.
+    if self:IsRadiantTrackMap() then
+        payload.sound = ""
+        payload.raw_sound = ""
     end
 
     -- Do not send a raw .vsnd through EmitGlobalSound: that API expects a registered
