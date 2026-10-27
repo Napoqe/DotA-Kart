@@ -1,0 +1,51 @@
+{
+  "hero": "mirana",
+  "clips": [
+    "kart_idle",
+    "kart_idle_left",
+    "kart_idle_right",
+    "kart_drive",
+    "kart_drive_left",
+    "kart_drive_right",
+    "kart_reverse",
+    "kart_reverse_left",
+    "kart_reverse_right"
+  ],
+  "materials": [
+    {
+      "source_material": "Material",
+      "vmat": "materials/karts/mirana/material.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\mirana\\material_color.png"
+    },
+    {
+      "source_material": "mirana_back_Valve",
+      "vmat": "materials/karts/mirana/mirana_back_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\mirana\\mirana_back_valve_color.tga"
+    },
+    {
+      "source_material": "mirana_shoulders_Valve",
+      "vmat": "materials/karts/mirana/mirana_shoulders_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\mirana\\mirana_shoulders_valve_color.tga"
+    },
+    {
+      "source_material": "Wheel_cut_interior",
+      "vmat": "materials/karts/mirana/wheel_cut_interior.vmat",
+      "texture": null
+    },
+    {
+      "source_material": "mirana_head_Valve",
+      "vmat": "materials/karts/mirana/mirana_head_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\mirana\\mirana_head_valve_color.tga"
+    },
+    {
+      "source_material": "mirana_base_Valve",
+      "vmat": "materials/karts/mirana/mirana_base_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\mirana\\mirana_base_valve_color.tga"
+    },
+    {
+      "source_material": "mirana_arms_Valve",
+      "vmat": "materials/karts/mirana/mirana_arms_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\mirana\\mirana_arms_valve_color.tga"
+    }
+  ]
+}

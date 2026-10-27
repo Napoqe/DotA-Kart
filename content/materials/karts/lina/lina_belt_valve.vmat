@@ -1,0 +1,6 @@
+Layer0
+{
+	shader "global_lit_simple.vfx"
+	TextureColor "materials/karts/lina/lina_belt_valve_color.tga"
+	g_vColorTint "[1 1 1 1]"
+}

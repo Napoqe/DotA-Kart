@@ -1,0 +1,36 @@
+#DKNameplates
+{
+    width: 100%;
+    height: 100%;
+    overflow: noclip;
+}
+
+.DKNameplate
+{
+    width: 156px;
+    height: 24px;
+    flow-children: right;
+    padding: 2px 4px;
+    border-radius: 3px;
+    background-color: transparent;
+    border: 0px solid transparent;
+}
+
+.DKNameplateAvatar
+{
+    width: 18px;
+    height: 18px;
+    vertical-align: center;
+    margin-right: 5px;
+}
+
+.DKNameplateText
+{
+    width: fill-parent-flow(1);
+    vertical-align: center;
+    font-size: 13px;
+    color: #f5f0dc;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-shadow: 1px 1px 2px 2 #000000;
+}

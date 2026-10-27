@@ -3,6 +3,9 @@
     "Language" "brazilian"
     "Tokens"
     {
+        "DOTA_KART_SETUP_STARTING_GRID" "GRID DE LARGADA"
+        "DOTA_KART_SETUP_RANDOM_STARTS_ON" "Posições aleatórias: SIM"
+        "DOTA_KART_SETUP_RANDOM_STARTS_OFF" "Posições aleatórias: NÃO"
         "DOTA_KART_SETUP_TITLE" "DOTA KART"
         "DOTA_KART_SETUP_SUBTITLE" "CONFIGURAÇÕES DA CORRIDA"
         "DOTA_KART_SETUP_LAPS" "VOLTAS"

@@ -1,0 +1,6 @@
+Layer0
+{
+ shader "global_lit_simple.vfx"
+ TextureColor "materials/rome/tree_foliage_0.png"
+ g_vColorTint "[1 1 1 0]"
+}

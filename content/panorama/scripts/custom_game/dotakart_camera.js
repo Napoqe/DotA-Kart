@@ -23,8 +23,8 @@
 
     var CFG = {
         distance: 720,
-        pitch: 36,
-        height_offset: 115,
+        pitch: 32,
+        height_offset: 135,
         look_ahead: 240,
 
         // IMPORTANTE:
@@ -223,15 +223,15 @@
         }
 
         if (IsFunction(GameUI, "SetCameraPitchMin")) {
-            GameUI.SetCameraPitchMin(ToNumber(CFG.pitch, 36));
+            GameUI.SetCameraPitchMin(ToNumber(CFG.pitch, 32));
         }
 
         if (IsFunction(GameUI, "SetCameraPitchMax")) {
-            GameUI.SetCameraPitchMax(ToNumber(CFG.pitch, 36));
+            GameUI.SetCameraPitchMax(ToNumber(CFG.pitch, 32));
         }
 
         if (IsFunction(GameUI, "SetCameraLookAtPositionHeightOffset")) {
-            GameUI.SetCameraLookAtPositionHeightOffset(ToNumber(CFG.height_offset, 115));
+            GameUI.SetCameraLookAtPositionHeightOffset(ToNumber(CFG.height_offset, 135));
         }
 
         // Se existir, evita o terreno empurrar a camera para angulos estranhos.

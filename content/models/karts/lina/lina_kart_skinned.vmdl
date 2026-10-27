@@ -1,0 +1,218 @@
+<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc41:version{12fc9d44-453a-4ae4-b4d9-7e2ac0bbd4e0} -->
+{
+	rootNode = {
+		_class = "RootNode"
+		children = [
+			{
+				_class = "RenderMeshList"
+				children = [
+					{
+						_class = "RenderMeshFile"
+						filename = "models/karts/lina/lina_kart.fbx"
+						import_scale = 1.0
+						import_filter = {
+							exclude_by_default = false
+							exception_list = [
+							]
+						}
+					},
+					{
+						_class = "Select All"
+						children = [
+							{
+								_class = "Replace Materials"
+								remaps = [
+									{
+										from = "Material.vmat"
+										to = "materials/karts/lina/skinned_material.vmat"
+									},
+									{
+										from = "lina_neck_Valve.vmat"
+										to = "materials/karts/lina/skinned_lina_neck_valve.vmat"
+									},
+									{
+										from = "lina_arms_Valve.vmat"
+										to = "materials/karts/lina/skinned_lina_arms_valve.vmat"
+									},
+									{
+										from = "lina_belt_Valve.vmat"
+										to = "materials/karts/lina/skinned_lina_belt_valve.vmat"
+									},
+									{
+										from = "lina_base_Valve.vmat"
+										to = "materials/karts/lina/skinned_lina_base_valve.vmat"
+									},
+									{
+										from = "Wheel_cut_interior.vmat"
+										to = "materials/karts/lina/skinned_wheel_cut_interior.vmat"
+									},
+									{
+										from = "lina_head_Valve.vmat"
+										to = "materials/karts/lina/skinned_lina_head_valve.vmat"
+									},
+								]
+							},
+						]
+						position = [
+							0.0,
+							0.0,
+							0.0,
+						]
+						angle = [
+							0.0,
+							0.0,
+							0.0,
+						]
+						select_vertices = true
+						select_edges = true
+						select_faces = true
+					},
+				]
+			},
+			{
+				_class = "AnimationList"
+				children = [
+					{
+						_class = "AnimFile"
+						name = "kart_idle"
+						source_filename = "models/karts/lina/kart_idle.fbx"
+						activity_name = "ACT_DOTA_IDLE"
+						activity_weight = 1
+						is_default_idle_anim = true
+						looping = true
+						import_bone_scales = true
+						start_frame = -1
+						end_frame = -1
+						framerate = 30.0
+						fade_in_time = 0.08
+						fade_out_time = 0.08
+					},
+					{
+						_class = "AnimFile"
+						name = "kart_idle_left"
+						source_filename = "models/karts/lina/kart_idle_left.fbx"
+						activity_name = "ACT_DOTA_CAST_ABILITY_1"
+						activity_weight = 1
+						is_default_idle_anim = false
+						looping = true
+						import_bone_scales = true
+						start_frame = -1
+						end_frame = -1
+						framerate = 30.0
+						fade_in_time = 0.08
+						fade_out_time = 0.08
+					},
+					{
+						_class = "AnimFile"
+						name = "kart_idle_right"
+						source_filename = "models/karts/lina/kart_idle_right.fbx"
+						activity_name = "ACT_DOTA_CAST_ABILITY_2"
+						activity_weight = 1
+						is_default_idle_anim = false
+						looping = true
+						import_bone_scales = true
+						start_frame = -1
+						end_frame = -1
+						framerate = 30.0
+						fade_in_time = 0.08
+						fade_out_time = 0.08
+					},
+					{
+						_class = "AnimFile"
+						name = "kart_drive"
+						source_filename = "models/karts/lina/kart_drive.fbx"
+						activity_name = "ACT_DOTA_RUN"
+						activity_weight = 1
+						is_default_idle_anim = false
+						looping = true
+						import_bone_scales = true
+						start_frame = -1
+						end_frame = -1
+						framerate = 30.0
+						fade_in_time = 0.08
+						fade_out_time = 0.08
+					},
+					{
+						_class = "AnimFile"
+						name = "kart_drive_left"
+						source_filename = "models/karts/lina/kart_drive_left.fbx"
+						activity_name = "ACT_DOTA_CAST_ABILITY_3"
+						activity_weight = 1
+						is_default_idle_anim = false
+						looping = true
+						import_bone_scales = true
+						start_frame = -1
+						end_frame = -1
+						framerate = 30.0
+						fade_in_time = 0.08
+						fade_out_time = 0.08
+					},
+					{
+						_class = "AnimFile"
+						name = "kart_drive_right"
+						source_filename = "models/karts/lina/kart_drive_right.fbx"
+						activity_name = "ACT_DOTA_CAST_ABILITY_4"
+						activity_weight = 1
+						is_default_idle_anim = false
+						looping = true
+						import_bone_scales = true
+						start_frame = -1
+						end_frame = -1
+						framerate = 30.0
+						fade_in_time = 0.08
+						fade_out_time = 0.08
+					},
+					{
+						_class = "AnimFile"
+						name = "kart_reverse"
+						source_filename = "models/karts/lina/kart_reverse.fbx"
+						activity_name = "ACT_DOTA_ATTACK"
+						activity_weight = 1
+						is_default_idle_anim = false
+						looping = true
+						import_bone_scales = true
+						start_frame = -1
+						end_frame = -1
+						framerate = 30.0
+						fade_in_time = 0.08
+						fade_out_time = 0.08
+					},
+					{
+						_class = "AnimFile"
+						name = "kart_reverse_left"
+						source_filename = "models/karts/lina/kart_reverse_left.fbx"
+						activity_name = "ACT_DOTA_CAST_ABILITY_5"
+						activity_weight = 1
+						is_default_idle_anim = false
+						looping = true
+						import_bone_scales = true
+						start_frame = -1
+						end_frame = -1
+						framerate = 30.0
+						fade_in_time = 0.08
+						fade_out_time = 0.08
+					},
+					{
+						_class = "AnimFile"
+						name = "kart_reverse_right"
+						source_filename = "models/karts/lina/kart_reverse_right.fbx"
+						activity_name = "ACT_DOTA_CAST_ABILITY_6"
+						activity_weight = 1
+						is_default_idle_anim = false
+						looping = true
+						import_bone_scales = true
+						start_frame = -1
+						end_frame = -1
+						framerate = 30.0
+						fade_in_time = 0.08
+						fade_out_time = 0.08
+					},
+				]
+				default_root_bone_name = "kart_root"
+			},
+		]
+		model_archetype = ""
+		primary_associated_entity = ""
+		document_sub_type = "ModelDocSubType_None"
+	}
+}

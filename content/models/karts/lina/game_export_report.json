@@ -1,0 +1,51 @@
+{
+  "hero": "lina",
+  "clips": [
+    "kart_idle",
+    "kart_idle_left",
+    "kart_idle_right",
+    "kart_drive",
+    "kart_drive_left",
+    "kart_drive_right",
+    "kart_reverse",
+    "kart_reverse_left",
+    "kart_reverse_right"
+  ],
+  "materials": [
+    {
+      "source_material": "Material",
+      "vmat": "materials/karts/lina/material.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\lina\\material_color.png"
+    },
+    {
+      "source_material": "lina_neck_Valve",
+      "vmat": "materials/karts/lina/lina_neck_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\lina\\lina_neck_valve_color.tga"
+    },
+    {
+      "source_material": "lina_arms_Valve",
+      "vmat": "materials/karts/lina/lina_arms_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\lina\\lina_arms_valve_color.tga"
+    },
+    {
+      "source_material": "lina_belt_Valve",
+      "vmat": "materials/karts/lina/lina_belt_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\lina\\lina_belt_valve_color.tga"
+    },
+    {
+      "source_material": "lina_base_Valve",
+      "vmat": "materials/karts/lina/lina_base_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\lina\\lina_base_valve_color.tga"
+    },
+    {
+      "source_material": "Wheel_cut_interior",
+      "vmat": "materials/karts/lina/wheel_cut_interior.vmat",
+      "texture": null
+    },
+    {
+      "source_material": "lina_head_Valve",
+      "vmat": "materials/karts/lina/lina_head_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\lina\\lina_head_valve_color.tga"
+    }
+  ]
+}

@@ -1,0 +1,226 @@
+<!-- dmx encoding keyvalues2 4 format vmap 40 -->
+"CMapRootElement"
+{
+	"id" "elementid" "533c919e-3faf-4894-bae1-1147f24bd635"
+	"isprefab" "bool" "1"
+	"editorbuild" "int" "6446"
+	"editorversion" "int" "400"
+	"showgrid" "bool" "1"
+	"snaprotationangle" "int" "15"
+	"gridspacing" "float" "64"
+	"show3dgrid" "bool" "1"
+	"defaultcamera" "CStoredCamera"
+	{
+		"id" "elementid" "c45a99fa-b70d-413f-a326-c926fcfbd3be"
+		"position" "vector3" "773.6942749023 -785.4744262695 791.53125"
+		"lookat" "vector3" "773.0673217773 -784.9262084961 790.977722168"
+	}
+	"3dcameras" "CStoredCameras"
+	{
+		"id" "elementid" "7714c259-48f5-421d-a514-d2b785770af2"
+		"activecamera" "int" "-1"
+		"cameras" "element_array"
+		[
+		]
+	}
+	"world" "CMapWorld"
+	{
+		"id" "elementid" "e2ace260-840a-493a-874b-43864e89f806"
+		"origin" "vector3" "0 0 0"
+		"angles" "qangle" "0 0 0"
+		"scales" "vector3" "1 1 1"
+		"nodeID" "int" "1"
+		"children" "element_array"
+		[
+			"CMapEntity"
+			{
+				"id" "elementid" "c090bc14-3bdb-4b93-bacd-bb6c03145a73"
+				"origin" "vector3" "0.00000 0.00000 0.00000"
+				"angles" "qangle" "0 0.000000 0"
+				"scales" "vector3" "1 1 1"
+				"nodeID" "int" "907"
+				"children" "element_array"
+				[
+				]
+				"editorOnly" "bool" "0"
+				"force_hidden" "bool" "0"
+				"variableTargetKeys" "string_array"
+				[
+				]
+				"variableNames" "string_array"
+				[
+				]
+				"relayPlugData" "DmePlugList"
+				{
+					"id" "elementid" "71f3d1a6-21aa-4954-83d1-491230812bb1"
+					"names" "string_array"
+					[
+					]
+					"dataTypes" "int_array"
+					[
+					]
+					"plugTypes" "int_array"
+					[
+					]
+					"descriptions" "string_array"
+					[
+					]
+				}
+				"connectionsData" "element_array"
+				[
+				]
+				"entity_properties" "EditGameClassProps"
+				{
+					"id" "elementid" "3ee4f127-adcf-4ce4-8445-f283dd20658c"
+					"classname" "string" "prop_static"
+					"targetname" "string" "rome_race_gate"
+					"model" "string" "models/rome/race_gate.vmdl"
+					"solid" "string" "6"
+					"rendercolor" "string" "255 255 255"
+					"disableShadows" "string" "0"
+					"disableflashlight" "string" "0"
+					"fademindist" "string" "-1"
+					"fademaxdist" "string" "0"
+				}
+				"hitNormal" "vector3" "0 0 1"
+				"isProceduralEntity" "bool" "0"
+			}
+		]
+		"editorOnly" "bool" "0"
+		"force_hidden" "bool" "0"
+		"variableTargetKeys" "string_array"
+		[
+		]
+		"variableNames" "string_array"
+		[
+		]
+		"relayPlugData" "DmePlugList"
+		{
+			"id" "elementid" "5630915d-706a-481d-ad67-9400e6174ef6"
+			"names" "string_array"
+			[
+			]
+			"dataTypes" "int_array"
+			[
+			]
+			"plugTypes" "int_array"
+			[
+			]
+			"descriptions" "string_array"
+			[
+			]
+		}
+		"connectionsData" "element_array"
+		[
+		]
+		"entity_properties" "EditGameClassProps"
+		{
+			"id" "elementid" "06069bbf-d3ea-4489-b591-f84fd48ee4d5"
+			"classname" "string" "worldspawn"
+			"targetname" "string" ""
+			"message" "string" ""
+			"skyname" "string" "sky_day01_01"
+			"chaptertitle" "string" ""
+			"startdark" "string" "0"
+			"gametitle" "string" "0"
+			"pvstype" "string" "0"
+			"newunit" "string" "0"
+			"maxpropscreenwidth" "string" "-1"
+			"minpropscreenwidth" "string" "0"
+			"OptimizedHeightFieldName" "string" ""
+			"prefab_has_runtime_entity_by_default" "string" "0"
+		}
+		"nextDecalID" "int" "0"
+		"fixupEntityNames" "bool" "1"
+		"mapUsageType" "string" "standard"
+	}
+	"visbility" "CVisibilityMgr"
+	{
+		"id" "elementid" "063d217f-4f5a-49d3-8e4d-b431e7e9507b"
+		"origin" "vector3" "0 0 0"
+		"angles" "qangle" "0 0 0"
+		"scales" "vector3" "1 1 1"
+		"nodeID" "int" "0"
+		"children" "element_array"
+		[
+		]
+		"editorOnly" "bool" "0"
+		"force_hidden" "bool" "0"
+		"variableTargetKeys" "string_array"
+		[
+		]
+		"variableNames" "string_array"
+		[
+		]
+		"nodes" "element_array"
+		[
+			"element" "2320ff35-ef31-4c07-aa9a-e9acaab6d79f",
+			"element" "d3689e7b-df77-4691-9691-4e9458b99e83",
+			"element" "3528e212-fb9b-4613-a79b-15ef94fcc3e9",
+			"element" "da21fd95-25a6-4c0c-b250-8ea99bc47c89",
+			"element" "f1b869e7-ad36-41de-a503-1d71da1e1133",
+			"element" "ccde8f99-6f34-4e0b-95e1-1b86c1bd81c4",
+			"element" "97101e66-4998-4e3a-9d53-4ba763b5028f",
+			"element" "358d0f0f-7f4f-4bcd-a980-c2489d9d3f6e",
+			"element" "a444981e-dafa-4196-89e0-60fc81aa32e7",
+			"element" "36c654a6-4c7b-429b-b8d3-7d206f4c562f",
+			"element" "3f30c926-8be7-4293-a288-25474d9185ab",
+			"element" "a63af6d7-89f4-4ee8-a057-0dcef698c90b"
+		]
+		"hiddenFlags" "int_array"
+		[
+			"0",
+			"0",
+			"0",
+			"0",
+			"0",
+			"0",
+			"0",
+			"0",
+			"0",
+			"0",
+			"0",
+			"0"
+		]
+	}
+	"mapVariables" "CMapVariableSet"
+	{
+		"id" "elementid" "e85ae552-8479-4f2c-a988-301bbc1ee875"
+		"variableNames" "string_array"
+		[
+		]
+		"variableValues" "string_array"
+		[
+		]
+		"variableEditorOverrides" "string_array"
+		[
+		]
+		"m_ChoiceGroups" "element_array"
+		[
+		]
+		"variableChoiceCounts" "int_array"
+		[
+		]
+		"variableChoices" "element_array"
+		[
+		]
+		"variableTypeNames" "string_array"
+		[
+		]
+	}
+	"rootSelectionSet" "CMapSelectionSet"
+	{
+		"id" "elementid" "331032dd-c5e5-4e92-8a6a-59eb9de1cb1e"
+		"children" "element_array"
+		[
+		]
+		"setType" "int" "0"
+		"selectionSetName" "string" ""
+		"selectionSetData" "element" ""
+	}
+	"m_ReferencedMeshSnapshots" "element_array"
+	[
+	]
+	"m_bIsCordoning" "bool" "0"
+	"m_bCordonsVisible" "bool" "0"
+}

@@ -157,11 +157,19 @@ function DotaKartHUD:PublishRacers(racers)
     racers = racers or {}
     self.lastRacers = racers
     self:TrySetNetTable("racers", racers)
-    CustomGameEventManager:Send_ServerToAllClients("dotakart_hud_update", { racers = racers })
+    CustomGameEventManager:Send_ServerToAllClients("dotakart_hud_update", {
+        racers = racers,
+        nameplate_decoys = self:GetDoppelwalkNameplates()
+    })
 end
 
 function DotaKartHUD:PublishState(playerID, state)
     state = state or {}
+    state.finish_gate_visible = 0
+    if self.trackBounds ~= nil and self.finishGate ~= nil and not self.finishGate:IsNull() then
+        state.finish_gate_x, state.finish_gate_y = self:WorldPositionToMap(self.finishGate:GetAbsOrigin())
+        state.finish_gate_visible = 1
+    end
     self.lastStates = self.lastStates or {}
     self.lastStates[playerID] = state
     self:TrySetNetTable("state_" .. tostring(playerID), state)
@@ -518,22 +526,48 @@ function DotaKartHUD:HandleFinishGateCrossing(racer, now, pos, lastDistance, dis
     local distGate = DKLength2D(pos, gatePos)
     local inside = distGate <= (self.finishGateRadius or 430)
     local exitRadius = self.finishGateExitRadius or ((self.finishGateRadius or 430) + 180)
+    local previousPos = racer.finish_gate_last_pos
+    racer.finish_gate_last_pos = Vector(pos.x, pos.y, pos.z)
 
-    if racer.finish_gate_inside == true and distGate > exitRadius then
-        racer.finish_gate_inside = false
-    end
-
-    if not inside or racer.finish_gate_inside == true then
+    if racer.finish_gate_inside == true then
+        if distGate > exitRadius then racer.finish_gate_inside = false end
         return false
     end
 
-    racer.finish_gate_inside = true
+    -- Sweep the traveled segment: fast items can enter and leave the whole gate
+    -- between two HUD samples, so testing only the endpoint misses their lap.
+    local swept = false
+    if previousPos ~= nil then
+        local dx, dy = pos.x - previousPos.x, pos.y - previousPos.y
+        local lengthSq = dx * dx + dy * dy
+        if lengthSq > 0 then
+            local t = DKClamp(((gatePos.x - previousPos.x) * dx + (gatePos.y - previousPos.y) * dy) / lengthSq, 0, 1)
+            local closest = Vector(previousPos.x + dx * t, previousPos.y + dy * t, pos.z)
+            swept = self:IsInsideFinishGate(closest, self.finishGateRadius or 430)
+        end
+    end
+    if not inside and not swept then return false end
+
+    racer.finish_gate_inside = distGate <= exitRadius
+    -- Check physical direction as well as spline wrap, including boosted passes.
+    if previousPos ~= nil and not self:IsForwardFinishWrap(lastDistance, distance, len) then
+        local gateProject = self:ProjectPositionOnTrack(gatePos)
+        for _, seg in ipairs(self.trackSegments or {}) do
+            if seg.index == gateProject.nearest_segment then
+                local dot = (pos.x - previousPos.x) * (seg.b.x - seg.a.x)
+                    + (pos.y - previousPos.y) * (seg.b.y - seg.a.y)
+                if dot <= 0 then return false end
+                break
+            end
+        end
+    end
     racer.finish_gate_passes = (tonumber(racer.finish_gate_passes or 0) or 0) + 1
 
     if self.firstFinishGatePassIsFree and racer.first_finish_gate_passed ~= true then
         racer.first_finish_gate_passed = true
         self:ResetLapValidationForRacer(racer, now)
         racer.path_distance = distance
+        racer.finish_progress_pending_wrap = distance > len * 0.5
         print("[DotaKartHUD] Player " .. tostring(racer.player_id) .. " cruzou o finish_line_gate pela primeira vez: nao conta volta.")
         return true
     end
@@ -541,12 +575,30 @@ function DotaKartHUD:HandleFinishGateCrossing(racer, now, pos, lastDistance, dis
     local canComplete, reason = self:CanCompleteLapAtGate(racer, now, len, lastDistance, distance)
     if canComplete then
         self:CompleteLap(racer, now)
+        -- The gate radius may be entered before projection wraps to segment 1.
+        -- Do not add both a new lap AND the old lap's near-full distance.
+        racer.finish_progress_pending_wrap = distance > len * 0.5
     elseif self.debugHud then
         local need, total = self:GetTrackPointRequiredVisitCount()
         print("[DotaKartHUD] Volta rejeitada p" .. tostring(racer.player_id) .. " reason=" .. tostring(reason) .. " checkpoints=" .. tostring(racer.lap_checkpoint_count or 0) .. " dk_track=" .. tostring(racer.track_point_visit_count or 0) .. "/" .. tostring(total) .. " need=" .. tostring(need) .. " maxDist=" .. tostring(math.floor(racer.max_distance_this_lap or 0)))
     end
 
     return true
+end
+
+function DotaKartHUD:OnRacerTeleported(playerID, pos)
+    local racer = self.racers and self.racers[playerID]
+    if racer == nil or pos == nil then return end
+    -- X returns and position swaps are discontinuous, not driven gate crossings.
+    racer.finish_gate_last_pos = Vector(pos.x, pos.y, pos.z)
+    racer.finish_gate_inside = self:IsInsideFinishGate(pos, self.finishGateRadius or 430)
+end
+
+function DotaKartHUD:GetRacerProgressDistance(racer, distance, len)
+    if racer.finish_progress_pending_wrap then
+        return distance - len
+    end
+    return distance
 end
 
 function DotaKartHUD:DebugPrintTrack()
@@ -700,6 +752,8 @@ function DotaKartHUD:GetUnitMapAngle(unit)
     return -math.deg(radians)
 end
 
+local RomeTrack = GetMapName ~= nil and GetMapName() == "rome" and require("dotakart/maps/rome") or nil
+
 function DotaKartHUD:ProjectPositionOnTrack(pos)
     if pos == nil or self.trackSegments == nil or #self.trackSegments == 0 or self.trackLength <= 0 then
         return {
@@ -748,6 +802,7 @@ function DotaKartHUD:ProjectPositionOnTrack(pos)
         end
     end
 
+    if RomeTrack ~= nil and best ~= nil then best = RomeTrack:ProjectBranch(pos, self, best) end
     return best or {
         distance = 0,
         normalized = 0,
@@ -845,6 +900,8 @@ function DotaKartHUD:ResetRacerForRace(racer, now)
     racer.last_project = nil
     racer.first_finish_gate_passed = false
     racer.finish_gate_passes = 0
+    racer.finish_progress_pending_wrap = false
+    racer.finish_gate_last_pos = nil
     racer.lap_checkpoints = {}
     racer.lap_checkpoint_count = 0
     racer.track_point_visits = {}
@@ -854,6 +911,8 @@ function DotaKartHUD:ResetRacerForRace(racer, now)
 
     local unit = racer.unit
     if DKValidUnit(unit) then
+        local pos = unit:GetAbsOrigin()
+        racer.finish_gate_last_pos = Vector(pos.x, pos.y, pos.z)
         -- Se o jogador nasce dentro da área da linha, ele precisa sair e cruzar de novo.
         -- Isso evita contar a largada como volta.
         racer.finish_gate_inside = self:IsInsideFinishGate(unit:GetAbsOrigin(), self.finishGateRadius or 430)
@@ -1094,6 +1153,10 @@ function DotaKartHUD:UpdateSingleRacer(racer, now)
 
     if racer.path_distance == nil then
         racer.path_distance = distance
+        racer.finish_gate_last_pos = Vector(pos.x, pos.y, pos.z)
+        if self.finishGatePos ~= nil and (racer.completed_laps or 0) == 0 then
+            racer.finish_progress_pending_wrap = distance > len * 0.5
+        end
         racer.max_distance_this_lap = distance
         racer.lap_checkpoints = racer.lap_checkpoints or {}
         racer.lap_checkpoint_count = racer.lap_checkpoint_count or 0
@@ -1107,6 +1170,15 @@ function DotaKartHUD:UpdateSingleRacer(racer, now)
     else
         local lastDistance = racer.path_distance
         local delta = distance - lastDistance
+        if self.finishGatePos ~= nil then
+            if self:IsForwardFinishWrap(lastDistance, distance, len) then
+                racer.finish_progress_pending_wrap = false
+            elseif lastDistance < len * 0.35 and distance > len * 0.55 and delta > len * 0.40 then
+                -- Reversing back across the seam must not grant almost a lap of
+                -- ranking progress while completed_laps stays unchanged.
+                racer.finish_progress_pending_wrap = true
+            end
+        end
 
         -- Movimento normal, ou pequena ré. Atualiza o maior progresso da volta atual.
         if delta > -len * 0.20 then
@@ -1146,7 +1218,7 @@ function DotaKartHUD:UpdateSingleRacer(racer, now)
         racer.progress = self.maxLaps * len
     else
         racer.lap = math.min((racer.completed_laps or 0) + 1, self.maxLaps)
-        racer.progress = (racer.completed_laps or 0) * len + distance
+        racer.progress = (racer.completed_laps or 0) * len + self:GetRacerProgressDistance(racer, distance, len)
     end
 end
 
@@ -1178,6 +1250,48 @@ function DotaKartHUD:BuildSortedRacerList(now)
     return list
 end
 
+function DotaKartHUD:GetRacerNameplateData(racer)
+    local unit = racer.unit
+    local data = { entindex = -1, steam_id = "", is_bot = racer.is_bot and 1 or 0, nameplate_hidden = 1 }
+    if unit ~= nil and not unit:IsNull() then
+        data.entindex = unit:entindex()
+        local hidden = unit.IsAlive ~= nil and not unit:IsAlive()
+        if unit.IsInvisible ~= nil and unit:IsInvisible() then hidden = true end
+        if unit.IsOutOfGame ~= nil and unit:IsOutOfGame() then hidden = true end
+        data.nameplate_hidden = hidden and 1 or 0
+    end
+    local playerID = tonumber(racer.player_id) or -1
+    if not racer.is_bot and playerID >= 0 and PlayerResource ~= nil
+        and PlayerResource:IsValidPlayerID(playerID) and PlayerResource.GetSteamID ~= nil then
+        -- Keep the 64-bit ID as a string all the way to Panorama.
+        data.steam_id = tostring(PlayerResource:GetSteamID(playerID) or "")
+    end
+    return data
+end
+
+function DotaKartHUD:GetDoppelwalkNameplates()
+    local result = {}
+    local items = GameRules.DotaKartItemSystem
+    local now = DKNow()
+    for targetID, decoy in pairs((items and items.activeDoppelwalkDecoys) or {}) do
+        -- The item table also contains owner aliases; send each clone only once.
+        if type(targetID) == "number" and decoy ~= nil and not decoy.destroyed
+            and now < (decoy.end_time or 0) and decoy.unit ~= nil and not decoy.unit:IsNull() then
+            local owner = tonumber(decoy.owner_player_id) or -1
+            local racer = self.racers and self.racers[owner]
+            if racer ~= nil then
+                local data = self:GetRacerNameplateData({ unit = decoy.unit, player_id = owner, is_bot = racer.is_bot })
+                data.player_id = owner
+                data.player_name = self:GetPlayerDisplayName(owner, racer)
+                data.hero = racer.hero or "npc_dota_hero_wisp"
+                data.is_decoy = 1
+                result[#result + 1] = data
+            end
+        end
+    end
+    return result
+end
+
 function DotaKartHUD:UpdateRaceNow()
     if self.autoRegisterHeroes then
         self:AutoRegisterHeroKarts()
@@ -1202,8 +1316,13 @@ function DotaKartHUD:UpdateRaceNow()
             allFinished = false
         end
 
+        local nameplate = self:GetRacerNameplateData(racer)
         standings[i] = {
             player_id = racer.player_id,
+            entindex = nameplate.entindex,
+            steam_id = nameplate.steam_id,
+            is_bot = nameplate.is_bot,
+            nameplate_hidden = nameplate.nameplate_hidden,
             hero = racer.hero or "npc_dota_hero_wisp",
             place = racer.place or i,
             lap = racer.lap or 1,

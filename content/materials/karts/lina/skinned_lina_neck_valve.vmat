@@ -1,0 +1,6 @@
+Layer0
+{
+	shader "hero.vfx"
+	TextureColor "materials/karts/lina/lina_neck_valve_color.tga"
+	g_vColorTint "[1 1 1 1]"
+}

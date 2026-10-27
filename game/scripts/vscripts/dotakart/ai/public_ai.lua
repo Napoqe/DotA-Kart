@@ -102,7 +102,7 @@ function DotaKartPublicAI:Init(gameMode, hud, controller, itemSystem)
         min_bots = 0,
         max_bots = math.max(0, math.min(7, (tonumber(DOTA_KART_MAX_PLAYERS or 8) or 8) - 1)),
         setup_hold_seconds = tonumber(DOTA_KART_PUBLIC_AI_SETUP_HOLD_SECONDS or 0.0) or 0.0,
-        tick_rate = 0.05,
+        tick_rate = 0.03,
         arrive_distance = 190,
         item_box_search_radius = 1150,
         item_box_use_ahead_radius = 780,
@@ -292,6 +292,10 @@ function DotaKartPublicAI:OnHostSettingsEvent(keys)
 
     if keys.bot_count ~= nil then
         self:SetConfiguredBotCount(tonumber(keys.bot_count), "panorama_host")
+    end
+
+    if keys.random_start_positions ~= nil and self.gameMode ~= nil then
+        self.gameMode.randomStartPositions = tonumber(keys.random_start_positions) == 1
     end
 
     if tonumber(keys.lock or 0) == 1 then
@@ -618,7 +622,7 @@ function DotaKartPublicAI:ApplyBotVisualHero(unit, heroName)
     pcall(function() unit.dk_kart_hero_name = heroName end)
     pcall(function() unit.dotakart_display_hero = heroName end)
     pcall(function() unit.dotakart_public_ai_hero = heroName end)
-    pcall(function() unit:RemoveNoDraw() end)
+    pcall(function() if not unit.dk_kart_animated_visual then unit:RemoveNoDraw() end end)
 end
 
 function DotaKartPublicAI:CleanupLegacyVisualProxies()
@@ -650,19 +654,19 @@ function DotaKartPublicAI:DestroyBotVisualProxy(bot)
         pcall(function() UTIL_Remove(bot.visual_proxy) end)
     end
     bot.visual_proxy = nil
-    if DKValidUnit(bot.unit) then pcall(function() bot.unit:RemoveNoDraw() end) end
+    if DKValidUnit(bot.unit) then pcall(function() if not bot.unit.dk_kart_animated_visual then bot.unit:RemoveNoDraw() end end) end
 end
 
 function DotaKartPublicAI:CreateBotVisualProxy(bot)
     -- FIX69: função mantida como stub para compatibilidade de hot reload, mas o sistema
     -- FIX66 de prop_dynamic foi desativado de verdade.
-    if bot ~= nil and DKValidUnit(bot.unit) then pcall(function() bot.unit:RemoveNoDraw() end) end
+    if bot ~= nil and DKValidUnit(bot.unit) then pcall(function() if not bot.unit.dk_kart_animated_visual then bot.unit:RemoveNoDraw() end end) end
     return nil
 end
 
 function DotaKartPublicAI:UpdateBotVisualProxy(bot, pos, dir)
     -- FIX69: sem proxy visual. A unidade real do herói integrado é o próprio kart/bot.
-    if bot ~= nil and DKValidUnit(bot.unit) then pcall(function() bot.unit:RemoveNoDraw() end) end
+    if bot ~= nil and DKValidUnit(bot.unit) then pcall(function() if not bot.unit.dk_kart_animated_visual then bot.unit:RemoveNoDraw() end end) end
 end
 
 function DotaKartPublicAI:CapturePlayerIDs()
@@ -1119,7 +1123,7 @@ function DotaKartPublicAI:CreateBotForSlot(slot)
         self:ApplyBotVisualHero(unit, heroName)
     end
 
-    pcall(function() unit:RemoveNoDraw() end)
+    pcall(function() if not unit.dk_kart_animated_visual then unit:RemoveNoDraw() end end)
     pcall(function() unit:SetTeam(team) end)
     pcall(function() unit:SetOwner(nil) end)
     pcall(function() unit:SetControllableByPlayer(-1, false) end)
@@ -1206,6 +1210,8 @@ function DotaKartPublicAI:CreateBotForSlot(slot)
     return bot
 end
 
+local RomeTrack = GetMapName ~= nil and GetMapName() == "rome" and require("dotakart/maps/rome") or nil
+
 function DotaKartPublicAI:PreparePublicBots()
     pcall(function() self:CleanupLegacyVisualProxies() end)
     if not self.config.enabled then return 0 end
@@ -1226,16 +1232,18 @@ function DotaKartPublicAI:PreparePublicBots()
         end
     end
 
+    if RomeTrack ~= nil then RomeTrack:AssignBots(self.bots) end
     self:BroadcastHostSettings()
     return created
 end
 
-function DotaKartPublicAI:GetPoint(index)
+function DotaKartPublicAI:GetPoint(index, bot)
     if self.track == nil or #self.track <= 0 then return nil end
     index = tonumber(index) or 1
     if index < 1 then index = 1 end
     if index > #self.track then index = 1 end
     local p = self.track[index]
+    if RomeTrack ~= nil and bot ~= nil and bot.rome_branch_active == true then p = RomeTrack:GetBranchPoint(index) or p end
     return DKGround(p, nil)
 end
 
@@ -1244,12 +1252,44 @@ function DotaKartPublicAI:AdvanceTarget(bot)
     if bot.next_index > #self.track then bot.next_index = 1 end
 end
 
+-- A bounded steering rate can overshoot a waypoint without entering its radius.
+-- Crossing its incoming plane nearby counts as passing it; never chase it in circles.
+function DotaKartPublicAI:HasReachedRouteTarget(bot, pos, target)
+    local arrive=tonumber(self.config.arrive_distance) or 190
+    if DKDistance2D(pos,target)<=arrive then return true end
+    local count=#(self.track or {})
+    if count<2 then return false end
+    local index=tonumber(bot.next_index) or 1
+    local base=self:GetPoint(index,bot)
+    local previous=self:GetPoint((index-2)%count+1,bot)
+    if not base or not previous then return false end
+    local segment=base-previous
+    local length=DKLength2D(segment)
+    if length<1 then return false end
+    local incoming=segment/length
+    local relative=pos-target
+    local along=relative.x*incoming.x+relative.y*incoming.y
+    local across=math.abs(relative.x*incoming.y-relative.y*incoming.x)
+    -- Stay local to the expected point, including the chosen lane/avoidance offset.
+    return along>=0 and along<=math.max(arrive,length*.5) and across<=arrive*1.5
+end
+
+function DotaKartPublicAI:GetTurnApproachSpeed(st, desiredDir, maxSpeed)
+    if not st or st.yaw==nil then return maxSpeed end
+    local targetYaw=math.deg(DKAtan2(desiredDir.y,desiredDir.x))
+    local error=math.abs(DKNormalizeYaw(targetYaw-st.yaw))
+    -- Slow down to turn back into a missed point instead of orbiting at full speed.
+    local factor=.25+.75*DKClamp((90-error)/60,0,1)
+    return maxSpeed*factor
+end
+
 function DotaKartPublicAI:GetOffsetTarget(bot)
-    local base = self:GetPoint(bot.next_index or 1)
+    if RomeTrack ~= nil then RomeTrack:UpdateBotRoute(bot, bot.next_index or 1, bot.unit:GetAbsOrigin()) end
+    local base = self:GetPoint(bot.next_index or 1, bot)
     if base == nil then return nil, Vector(1,0,0) end
     local nextIndex = (tonumber(bot.next_index) or 1) + 1
     if nextIndex > #self.track then nextIndex = 1 end
-    local ahead = self:GetPoint(nextIndex) or base
+    local ahead = self:GetPoint(nextIndex, bot) or base
     local dir = DKNormalize2D(ahead - base, bot.last_dir or Vector(1,0,0))
     local right = Vector(-dir.y, dir.x, 0)
     local offset = (tonumber(bot.lane_offset) or 0) + (tonumber(bot.lane_jitter) or 0)
@@ -1269,12 +1309,27 @@ end
 function DotaKartPublicAI:ResetAntiStuckWatch(bot, now, pos, distance)
     if bot == nil then return end
     now = tonumber(now) or DKNow()
-    local target = self:GetPoint(bot.next_index or 1)
+    local target = self:GetPoint(bot.next_index or 1, bot)
     if distance == nil and pos ~= nil and target ~= nil then distance = DKDistance2D(pos, target) end
     bot.stuck_watch_index = tonumber(bot.next_index) or 1
     bot.stuck_best_distance = tonumber(distance)
     bot.stuck_last_progress_time = now
     if pos ~= nil then bot.stuck_last_progress_pos = Vector(pos.x, pos.y, pos.z) end
+end
+
+-- A hostile X return must make the bot drive from the marked point again;
+-- keeping its old waypoint lets anti-stuck Glimpse undo the item's setback.
+function DotaKartPublicAI:OnKartTeleported(playerID, unit, pos)
+    local bot = self.bots and self.bots[playerID]
+    if bot == nil or bot.unit ~= unit or #(self.track or {}) < 2 then return end
+    local index = self:GetNearestTrackIndex(pos)
+    if self.hud and self.hud.ProjectPositionOnTrack then
+        local project = self.hud:ProjectPositionOnTrack(pos)
+        index = project.nearest_segment or index
+        if RomeTrack ~= nil then RomeTrack:ResetBotRoute(bot, pos, project) end
+    end
+    bot.next_index = (index % #self.track) + 1
+    self:ResetAntiStuckWatch(bot, DKNow(), pos)
 end
 
 function DotaKartPublicAI:TriggerAntiStuckGlimpse(bot, now)
@@ -1283,7 +1338,7 @@ function DotaKartPublicAI:TriggerAntiStuckGlimpse(bot, now)
     if now < (tonumber(bot.stuck_recovery_cooldown_until) or 0) then return false end
 
     local nextIndex = tonumber(bot.next_index) or 1
-    local target = self:GetPoint(nextIndex)
+    local target = self:GetPoint(nextIndex, bot)
     if target == nil then return false end
 
     local antiSkip = GameRules and GameRules.DotaKartAntiSkip or nil
@@ -1313,7 +1368,7 @@ function DotaKartPublicAI:UpdateAntiStuck(bot, now, pos)
     if bot == nil or pos == nil then return false end
     now = tonumber(now) or DKNow()
     local nextIndex = tonumber(bot.next_index) or 1
-    local target = self:GetPoint(nextIndex)
+    local target = self:GetPoint(nextIndex, bot)
     if target == nil then return false end
     local dist = DKDistance2D(pos, target)
 
@@ -1661,7 +1716,7 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
                 self:UseHeldItem(bot, false)
             end
             return
-        elseif kind == "star" or kind == "frost_shield" or kind == "invisibility" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" or kind == "plague_ward" then
+        elseif kind == "star" or kind == "frost_shield" or kind == "invisibility" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" or kind == "plague_ward" or kind == "nether_ward" or kind == "counterspell" then
             self:UseHeldItem(bot, false)
             return
         elseif kind == "nitro" then
@@ -1680,7 +1735,7 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
 
     if kind == "nitro" then
         if DKValidUnit(ahead) or boxAhead ~= nil or DKRandomFloat(0, 1) < 0.45 then self:UseHeldItem(bot, false) end
-    elseif kind == "star" or kind == "invisibility" or kind == "frost_shield" or kind == "bloodlust" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" or kind == "plague_ward" then
+    elseif kind == "star" or kind == "invisibility" or kind == "frost_shield" or kind == "bloodlust" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" or kind == "plague_ward" or kind == "nether_ward" or kind == "counterspell" then
         if DKValidUnit(near) or DKRandomFloat(0, 1) < 0.30 then self:UseHeldItem(bot, false) end
     elseif kind == "illusory_orb" then
         local activeOrb = itemSystem.activeIllusoryOrbs and itemSystem.activeIllusoryOrbs[bot.player_id] or nil
@@ -1695,11 +1750,31 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
         if DKValidUnit(behind) or DKRandomFloat(0, 1) < 0.40 then self:UseHeldItem(bot, false) end
     elseif kind == "charge_darkness" or kind == "chain_frost" or kind == "item_steal" then
         if DKValidUnit(near) or DKValidUnit(ahead) then self:UseHeldItem(bot, false) end
+    elseif kind == "speed_drain" then
+        local target = itemSystem:FindNearestEnemyKart(bot.player_id, bot.unit:GetAbsOrigin(), 1200)
+        if DKValidUnit(target) then self:UseHeldItem(bot, false) end
     elseif kind == "meat_hook" or kind == "hookshot" or kind == "sacred_arrow" or kind == "swap_missile" or kind == "venomous_gale" or kind == "chaos_bolt" or kind == "spectral_dagger" or kind == "battle_hunger" or kind == "x_marks" or kind == "ice_shards" or kind == "tornado" or kind == "homing_missile" or kind == "the_swarm" or kind == "storm_hammer" then
         if DKValidUnit(ahead) then self:UseHeldItem(bot, false) end
     else
         if DKRandomFloat(0, 1) < 0.20 then self:UseHeldItem(bot, false) end
     end
+end
+
+-- Bound heading changes to the same physical steering rate used by humans.
+-- Deadband/hysteresis prevents tiny alternating route corrections restarting clips.
+function DotaKartPublicAI:SmoothKartHeading(bot, st, targetYaw, dt, config)
+    local current=tonumber(st and st.yaw) or tonumber(bot.drive_yaw) or targetYaw
+    local delta=(targetYaw-current+180)%360-180
+    local step=(tonumber(config and config.turn_rate) or 150)*math.max(0,dt)
+    local wanted=delta*(1-math.exp(-math.max(0,dt)/.10))
+    if math.abs(delta)<.12 then wanted=0 end
+    local yaw=current+DKClamp(wanted,-step,step)
+    local turnRate=math.abs(delta)>2 and delta/math.max(.001,dt) or 0
+    local steer=turnRate>8 and 1 or (turnRate< -8 and -1 or 0)
+    if steer==0 and math.abs(delta)>.6 then steer=bot.visual_steer or 0 end
+    bot.visual_steer=steer;bot.drive_yaw=DKNormalizeYaw(yaw)
+    if st then st.kart_ai_visual_steer=steer end
+    return bot.drive_yaw
 end
 
 function DotaKartPublicAI:ThinkBot(bot, now, dt)
@@ -1727,6 +1802,14 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
         end
     end
 
+    if controller and controller.GetState then
+        local state = controller:GetState(bot.player_id)
+        if (state.crystal_slide_until or 0) > now then
+            self:ResetAntiStuckWatch(bot, now, bot.unit:GetAbsOrigin())
+            return
+        end
+    end
+
     if controller ~= nil and controller.IsKartStunned ~= nil then
         if controller:IsKartStunned(bot.player_id, now) or (controller.IsKartLocked ~= nil and controller:IsKartLocked(bot.player_id, now)) then
             -- FIX68: com o movimento manual do controller bloqueado para fake clients da IA,
@@ -1735,7 +1818,7 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
                 local st = controller:GetState(bot.player_id)
                 controller:UpdateKart(bot.player_id, bot.unit, st, dt or (self.config.tick_rate or 0.05), now)
             end
-            pcall(function() bot.unit:RemoveNoDraw() end)
+            pcall(function() if not bot.unit.dk_kart_animated_visual then bot.unit:RemoveNoDraw() end end)
             self:ResetAntiStuckWatch(bot, now, bot.unit:GetAbsOrigin())
             return
         end
@@ -1757,7 +1840,7 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
             end
         end
         pcall(function() bot.unit:SetForwardVector(bot.last_dir or bot.unit:GetForwardVector()) end)
-        pcall(function() bot.unit:RemoveNoDraw() end)
+        pcall(function() if not bot.unit.dk_kart_animated_visual then bot.unit:RemoveNoDraw() end end)
         self:ResetAntiStuckWatch(bot, now, bot.unit:GetAbsOrigin())
         self:ThinkItemUse(bot, now)
         return
@@ -1785,7 +1868,7 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
     local toTarget = target - pos
     local dist = DKLength2D(toTarget)
 
-    if dist <= (self.config.arrive_distance or 190) then
+    if self:HasReachedRouteTarget(bot,pos,target) then
         self:AdvanceTarget(bot)
         target, trackDir = self:GetOffsetTarget(bot)
         if target == nil then return end
@@ -1818,15 +1901,31 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
         end
     end
 
+    local mobilityActive = st ~= nil and ((tonumber(st.shukuchi_until) or 0) > now
+        or st.ball_lightning_active == true)
+    local ignoreSlowEffects = mobilityActive or (st ~= nil and (tonumber(st.astral_self_until) or 0) > now)
+    if st ~= nil then
+        if (st.spectral_path_buff_until or 0) > now then
+            maxSpeed = maxSpeed * (1.0 + (tonumber(st.spectral_path_bonus_pct) or 0.10))
+        end
+        if (tonumber(st.shukuchi_until) or 0) > now then
+            maxSpeed = math.max(maxSpeed, tonumber(st.shukuchi_haste_speed) or 0)
+        end
+        if st.ball_lightning_active == true then
+            maxSpeed = math.max(maxSpeed, tonumber(st.ball_lightning_speed) or 1900)
+            accel = tonumber(st.ball_lightning_acceleration) or 5200
+        end
+    end
+
     -- FIX130: Public AI owns its own movement, so it must mirror the controller's
     -- dedicated exact-value slow channels. FIX129 only added these channels to
     -- UpdateKart(), which public bots intentionally bypass during normal driving.
     if st ~= nil then
-        local ignoreSlowEffects = (tonumber(st.shukuchi_until) or 0) > now
-            or st.ball_lightning_active == true
-            or (tonumber(st.astral_self_until) or 0) > now
         if not ignoreSlowEffects then
             local exactFactor = 1.0
+            if (tonumber(st.spectral_path_slow_until) or 0) > now then
+                exactFactor = exactFactor * (1.0 - DKClamp(tonumber(st.spectral_path_slow_pct) or 0.10, 0, 0.95))
+            end
             if (tonumber(st.plague_ward_slow_until) or 0) > now then
                 exactFactor = exactFactor * (1.0 - DKClamp(tonumber(st.plague_ward_slow_pct) or 0.15, 0, 0.95))
             end
@@ -1837,14 +1936,32 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
         end
     end
 
+    local pugnaFactor = 1
+    if controller and controller.GetPugnaSpeedMultiplier then
+        pugnaFactor = controller:GetPugnaSpeedMultiplier(bot.player_id, now, ignoreSlowEffects)
+        maxSpeed = math.max(45, maxSpeed * pugnaFactor)
+    end
+    local approachSpeed=self:GetTurnApproachSpeed(st,moveDir,maxSpeed)
     local currentSpeed = tonumber(bot.current_speed or 0) or 0
     if st ~= nil and (st.speed or 0) > currentSpeed then currentSpeed = st.speed end
-    currentSpeed = DKApproach(currentSpeed, maxSpeed, accel * dt)
+    if pugnaFactor < 1 then currentSpeed = math.min(currentSpeed, maxSpeed) end
+    currentSpeed = DKApproach(currentSpeed, approachSpeed,
+        (currentSpeed>approachSpeed and math.max(accel,3200) or accel)*dt)
     local speed = currentSpeed
 
-    if controller ~= nil and controller.GetKartSlowPct ~= nil then
+    if not mobilityActive and controller ~= nil and controller.GetKartSlowPct ~= nil then
         local slowPct = controller:GetKartSlowPct(bot.player_id, now) or 0
         if slowPct > 0 then speed = math.max(140, speed * (1.0 - slowPct)) end
+    end
+    local yaw = DKNormalizeYaw(math.deg(DKAtan2(moveDir.y, moveDir.x)))
+    yaw=self:SmoothKartHeading(bot,st,yaw,dt,controller and controller.config)
+    moveDir=Vector(math.cos(math.rad(yaw)),math.sin(math.rad(yaw)),0)
+    if st ~= nil and controller ~= nil and DotaKartHandling ~= nil then
+        local turn = (yaw - (st.yaw or yaw) + 180) % 360 - 180
+        local steer = math.abs(turn) > 3 * dt and (turn > 0 and 1 or -1) or 0
+        local motionYaw
+        motionYaw, speed = DotaKartHandling:Update(controller.config, st, yaw, speed, steer, dt)
+        moveDir = Vector(math.cos(math.rad(motionYaw)), math.sin(math.rad(motionYaw)), 0)
     end
     bot.current_speed = speed
 
@@ -1865,7 +1982,6 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
         return
     end
 
-    local yaw = DKNormalizeYaw(math.deg(DKAtan2(moveDir.y, moveDir.x)))
     if controller ~= nil and controller.GetState ~= nil then
         local st = controller:GetState(bot.player_id)
         st.yaw = yaw
@@ -1877,8 +1993,8 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
         pcall(function() unit:SetForwardVector(moveDir) end)
         pcall(function() unit:FaceTowards(finalPos + moveDir * 256) end)
     end
-    pcall(function() unit:RemoveNoDraw() end)
-    pcall(function() ResolveNPCPositions(finalPos, 96) end)
+    pcall(function() if not unit.dk_kart_animated_visual then unit:RemoveNoDraw() end end)
+    -- Custom kart physics already resolves contact; native NPC separation causes snapping.
 
     self:ThinkItemUse(bot, now)
 end

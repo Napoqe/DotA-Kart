@@ -1,0 +1,22 @@
+- Improved kart animation stability and eliminated bot model jitter.
+- Smoothed bot steering and fixed bots circling missed waypoints.
+- Increased Ice Shards range to 2,550.
+- Increased Unstable Concoction range to 1,800.
+- Increased Meat Hook range to 6,000.
+- Increased Storm Hammer range to 2,550.
+- Increased Tornado range to 13,500.
+- Increased Sacred Arrow range to 7,500.
+- Crystal Clone now slides the user forward 500 units at 1,500.67 speed, with movement and ground-trail effects.
+- Improved Nitro boost effects and added the native Dota 2 ability border to all three Nitro icons.
+- Added Nether Ward: follows for 20 seconds, punishes enemy item use within 1,500 range with a 75% slow for 1 second, and cancels one projectile before being destroyed.
+- Fixed Nether Ward activation around mobility items and made its orb, runes, glow, and fire follow the ward.
+- Added Speed Drain: steals 5% speed per second for up to 10 seconds, with 1,200 cast range, 2,000 break distance, and effects lasting 5 seconds after the link ends.
+- Raised the Speed Drain beam so it connects above both karts instead of running along the ground.
+- Rebalanced Nether Ward and Speed Drain item-box odds by race position, making Nether Ward rarer and Speed Drain more likely for trailing racers.
+- Added Counterspell: reflects incoming item projectiles for 2 seconds and rerolls a different item if nothing is reflected.
+- Power Cogs now collide with Rome scenery while clearing the road and curbs.
+- Redesigned Rome's SPQR banners with clearer eagle, laurel, and lettering artwork on both sides.
+- Replaced Rome's finish-line portal with the new model, removed its flags and banners, and widened its opening and collision passage for the road.
+- Speed Drain is now discarded when used without a valid target, freeing the slot for the next item box.
+- Speed Drain now stops when its user is stunned or affected by Astral Imprisonment.
+- Fixed Nitro icons appearing dark or disabled by correcting the ability-frame layering.

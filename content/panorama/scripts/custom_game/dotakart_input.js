@@ -2,7 +2,7 @@
     "use strict";
 
     /*
-        DotA Kart - input client FIX16
+        DotA Kart - input client / Arcade controls hotfix
         ----------------------------------------------------
         W = acelerar
         S = freio / re
@@ -19,6 +19,10 @@
 
         Solução: cada load cria nomes UNICOS de comando e rebinda W/S/A/D/T
         para esses nomes. Assim nunca dependemos de callback antigo em cache.
+
+        Arcade: addoninfo declara W/S/A/D como teclas do addon. Os comandos
+        declarados encaminham para o HUD atual, e os binds são reaplicados
+        na seleção do herói, mudança de estado e contagem regressiva.
     */
 
     var ENABLED = true;
@@ -68,7 +72,7 @@
     }
 
     function Msg(text) {
-        $.Msg("[DotA Kart Input FIX16] " + text);
+        $.Msg("[DotA Kart Input Arcade] " + text);
     }
 
     function IsFunction(owner, name) {
@@ -94,15 +98,17 @@
 
     function SendState(force) {
         if (!ENABLED || typeof GameEvents === "undefined") return;
+        if (!IsCurrentInput()) return;
 
         var now = IsFunction(Game, "Time") ? Game.Time() : 0;
         var sig = InputSignature();
 
         if (!force && sig === lastSent) {
-            if (sig === "0000") return;
+            if (sig === "00000") return;
             if (now - lastSendTime < 0.25) return;
         }
 
+        var changed = sig !== lastSent;
         lastSent = sig;
         lastSendTime = now;
 
@@ -119,7 +125,9 @@
             force_forward: input.force_forward ? 1 : 0
         });
 
-        if (debug || sig !== "0000") {
+        // Log releases too. A held-state heartbeat cannot tell whether a key-up
+        // callback ran, and printing every heartbeat hides the transition.
+        if (debug || changed) {
             Msg("send p" + playerID +
                 " W=" + (input.forward ? 1 : 0) +
                 " S=" + (input.reverse ? 1 : 0) +
@@ -248,7 +256,63 @@
         AddCommand(CMD.release, function () { ReleaseAll(); });
     }
 
+    // Arcade loads the addon's declared keys separately from ordinary Dota keys.
+    // Stable names in addoninfo must forward to the CURRENT HUD after a Tools reload.
+    // Keep the per-load commands above for runtime binds and release callbacks.
+    function RegisterAddonDrivingCommands() {
+        var config = GameUI.CustomUIConfig();
+        if (config.dotaKartDrivingInput) config.dotaKartDrivingInput.release();
+        config.dotaKartDrivingInput = { run: RUN_ID, setKey: SetKey, release: ReleaseAll, diagnose: DiagnoseInput };
+
+        function RegisterDirection(direction) {
+            function Dispatch(down) {
+                var current = GameUI.CustomUIConfig().dotaKartDrivingInput;
+                if (current) current.setKey(direction, down);
+            }
+            AddCommand("+dotakart_drive_" + direction, function () { Dispatch(true); });
+            AddCommand("-dotakart_drive_" + direction, function () { Dispatch(false); });
+        }
+
+        if (!config.dotaKartDrivingCommandsRegistered) {
+            RegisterDirection("forward");
+            RegisterDirection("reverse");
+            RegisterDirection("left");
+            RegisterDirection("right");
+            config.dotaKartDrivingCommandsRegistered = true;
+        }
+        if (!config.dotaKartInputDiagnosticRegistered) {
+            AddCommand("dotakart_input_debug", function () {
+                var current = GameUI.CustomUIConfig().dotaKartDrivingInput;
+                if (current && current.diagnose) current.diagnose();
+            });
+            config.dotaKartInputDiagnosticRegistered = true;
+        }
+    }
+
+    function DiagnoseInput() {
+        if (!IsCurrentInput()) return;
+        Msg("diagnostic client run=" + RUN_ID + " input=" + InputSignature());
+        function Request() {
+            if (!IsCurrentInput()) return;
+            GameEvents.SendCustomGameEventToServer("dotakart_input_debug", {
+                PlayerID: GetPlayerID()
+            });
+        }
+        Request();
+        $.Schedule(0.5, Request);
+    }
+
+    function RebindForGameTransition() {
+        if (!IsCurrentInput()) return;
+        ReleaseAll();
+        ApplyKeyBinds();
+        // Hero selection and the native HUD may finish loading after the first bind.
+        $.Schedule(0.25, ApplyKeyBinds);
+        $.Schedule(1.0, ApplyKeyBinds);
+    }
+
     function ApplyKeyBinds() {
+        if (!IsCurrentInput()) return;
         BindKey("w", "+" + CMD.forward);
         BindKey("s", "+" + CMD.reverse);
         BindKey("a", "+" + CMD.left);
@@ -286,17 +350,32 @@
     }
 
     function Heartbeat() {
+        if (!IsCurrentInput()) return;
         $.Schedule(HEARTBEAT, Heartbeat);
         SendState(false);
     }
 
+    function IsCurrentInput() {
+        var current = GameUI.CustomUIConfig().dotaKartDrivingInput;
+        return !current || current.run === RUN_ID;
+    }
+
     function Init() {
         RegisterCommands();
+        RegisterAddonDrivingCommands();
+        GameEvents.Subscribe("dotakart_input_debug", function (data) {
+            if (IsCurrentInput()) Msg("diagnostic server " + JSON.stringify(data));
+        });
+        GameEvents.Subscribe("game_rules_state_change", RebindForGameTransition);
+        GameEvents.Subscribe("dota_player_update_assigned_hero", RebindForGameTransition);
+        GameEvents.Subscribe("dotakart_countdown_update", function (data) {
+            if (Number(data.show) === 1) ApplyKeyBinds();
+        });
         RebindThink();
         ReleaseAll();
         Heartbeat();
         PrintManualBinds();
-        Msg("script carregado FIX16. Nomes de comando sao unicos para evitar cache do Panorama.");
+        Msg("script carregado INPUT_DIAGNOSTIC_2. Console: dotakart_input_debug");
     }
 
     Init();

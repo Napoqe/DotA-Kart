@@ -7,10 +7,29 @@
 	[
 		"radiant_track",
 		"mines",
+		"rome",
 	]
 	CheckAFKPlayers = false
 	DefaultMap = "radiant_track"
-	Default_Keys = [  ]
+	Default_Keys = 
+	[
+		{
+			Key = "W"
+			Command = "+dotakart_drive_forward"
+		},
+		{
+			Key = "S"
+			Command = "+dotakart_drive_reverse"
+		},
+		{
+			Key = "A"
+			Command = "+dotakart_drive_left"
+		},
+		{
+			Key = "D"
+			Command = "+dotakart_drive_right"
+		},
+	]
 	DisableIK = false
 	EnablePickRules = false
 	EventGame = false

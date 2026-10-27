@@ -1,0 +1,6 @@
+Layer0
+{
+ shader "global_lit_simple.vfx"
+ TextureColor "materials/rome/spqr_banner_art.png"
+ g_vColorTint "[1 1 1 0]"
+}

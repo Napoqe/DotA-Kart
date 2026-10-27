@@ -1,0 +1,11 @@
+engine_accelerate_mk64.wav
+
+Adapted from the original Mario Kart 64 Nintendo logo engine effect, "Vroom!".
+Game audio: Nintendo.
+Reference recording submitted by Deezer, The Mushroom Kingdom.
+Source page: https://themushroomkingdom.net/media/mk64/wav
+Reference WAV: https://themushroomkingdom.net/sounds/wav/mk64/mk64_nintendo_logo.wav
+
+Edits: trim approach/tail, modest gain automation, mono mix, 44.1 kHz PCM16
+conversion, short edge fades and peak normalization.
+This is adapted game audio; it is not an independently generated recording.

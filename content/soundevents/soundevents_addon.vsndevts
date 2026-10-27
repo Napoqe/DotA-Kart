@@ -208,20 +208,52 @@
 		pitch = "1.0"
 		soundlevel = "90.0"
 	}
+	dotakart_engine_accelerate =
+	{
+		type = "dota_src1_3d"
+		vsnd_files =
+		[
+			"sounds/dotakart/kart engine/engine_accelerate_retro.vsnd",
+		]
+		volume = "0.55"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "75.0"
+		distance_max = "1800.0"
+		block_matching_entity = true
+		preload_vsnds = 1
+	}
+	dotakart_engine_running =
+	{
+		type = "dota_src1_3d"
+		vsnd_files =
+		[
+			"sounds/dotakart/kart engine/engine_running_retro_loop.vsnd",
+		]
+		volume = "0.48"
+		pitch_rand_min = "0.0"
+		pitch_rand_max = "0.0"
+		pitch = "1.0"
+		soundlevel = "75.0"
+		distance_max = "1800.0"
+		block_matching_entity = true
+		preload_vsnds = 1
+	}
 	dotakart_engine_idle =
 	{
 		type = "dota_src1_3d"
 		vsnd_files =
 		[
-			"sounds/dotakart/kart engine/engine_idle.vsnd",
+			"sounds/dotakart/kart engine/engine_idle_retro_loop.vsnd",
 		]
-		volume = "0.95"
+		volume = "0.34"
 		pitch_rand_min = "0.0"
 		pitch_rand_max = "0.0"
 		pitch = "1.0"
-		soundlevel = "78.0"
+		soundlevel = "68.0"
+		distance_max = "1200.0"
 		block_matching_entity = true
-		instance_limit = 1
 		preload_vsnds = 1
 	}
 	engine_idle =

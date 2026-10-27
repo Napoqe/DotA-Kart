@@ -7,6 +7,7 @@ var DotaKartGameSetup = DotaKartGameSetup || {};
 
 DotaKartGameSetup.currentLaps = 3;
 DotaKartGameSetup.currentBots = -1;
+DotaKartGameSetup.currentRandomStarts = true;
 DotaKartGameSetup.maxBots = 7;
 DotaKartGameSetup.maxPlayers = 8;
 DotaKartGameSetup.locked = false;
@@ -139,6 +140,7 @@ DotaKartGameSetup.RefreshSettings = function (payload) {
 
     DotaKartGameSetup.currentLaps = DotaKartGameSetup.GetPayloadNumber(payload, "laps", DotaKartGameSetup.currentLaps || 3);
     DotaKartGameSetup.currentBots = DotaKartGameSetup.GetPayloadNumber(payload, "bot_count", DotaKartGameSetup.currentBots);
+    if (payload.random_start_positions !== undefined) DotaKartGameSetup.currentRandomStarts = Number(payload.random_start_positions) === 1;
     DotaKartGameSetup.maxBots = Math.max(0, Math.min(7, DotaKartGameSetup.GetPayloadNumber(payload, "max_bots", DotaKartGameSetup.maxBots || 7)));
     DotaKartGameSetup.maxPlayers = Math.max(1, Math.min(8, DotaKartGameSetup.GetPayloadNumber(payload, "max_players", DotaKartGameSetup.maxPlayers || 8)));
     DotaKartGameSetup.locked = Number(payload.locked || 0) === 1 || Number(payload.race_started || 0) === 1;
@@ -192,6 +194,13 @@ DotaKartGameSetup.RefreshSettings = function (payload) {
             DotaKartGameSetup.SetDisabled(botButton, disabled);
             botButton.SetHasClass("DKSetupSelected", DotaKartGameSetup.currentBots === b);
         }
+    }
+
+    var randomStarts = DotaKartGameSetup.Find("DKSetupRandomStarts");
+    if (randomStarts) {
+        DotaKartGameSetup.SetDisabled(randomStarts, !isHost || DotaKartGameSetup.locked);
+        randomStarts.SetHasClass("DKSetupSelected", DotaKartGameSetup.currentRandomStarts);
+        DotaKartGameSetup.SetButtonText(randomStarts, DotaKartGameSetup.Localize(DotaKartGameSetup.currentRandomStarts ? "DOTA_KART_SETUP_RANDOM_STARTS_ON" : "DOTA_KART_SETUP_RANDOM_STARTS_OFF"));
     }
 
     var hostStatus = DotaKartGameSetup.Find("DKSetupHostStatus");
@@ -354,6 +363,15 @@ DotaKartGameSetup.SetBots = function (count) {
     DotaKartGameSetup.SendSettings({ bot_count: DotaKartGameSetup.currentBots });
 };
 
+DotaKartGameSetup.ToggleRandomStarts = function () {
+    if (DotaKartGameSetup.locked || !DotaKartGameSetup.IsHost(DotaKartGameSetup.lastPayload)) return;
+    var value = DotaKartGameSetup.currentRandomStarts ? 0 : 1;
+    var copy = DotaKartGameSetup.lastPayload || {};
+    copy.random_start_positions = value;
+    DotaKartGameSetup.RefreshSettings(copy);
+    DotaKartGameSetup.SendSettings({ random_start_positions: value });
+};
+
 DotaKartGameSetup.JoinTeam = function (slot) {
     if (DotaKartGameSetup.locked) return;
     slot = Math.max(0, Math.min(7, Number(slot) || 0));
@@ -372,7 +390,7 @@ DotaKartGameSetup.LeaveTeam = function () {
 
 DotaKartGameSetup.Confirm = function () {
     if (DotaKartGameSetup.locked) return;
-    DotaKartGameSetup.SendServer("dotakart_setup_confirm", { confirm: 1, laps: DotaKartGameSetup.currentLaps, bot_count: DotaKartGameSetup.currentBots });
+    DotaKartGameSetup.SendServer("dotakart_setup_confirm", { confirm: 1, laps: DotaKartGameSetup.currentLaps, bot_count: DotaKartGameSetup.currentBots, random_start_positions: DotaKartGameSetup.currentRandomStarts ? 1 : 0 });
 };
 
 DotaKartGameSetup.ToggleCollapse = function () {
@@ -391,6 +409,8 @@ DotaKartGameSetup.HookStaticButtons = function () {
 
     var fill = DotaKartGameSetup.Find("DKSetupBotFill");
     if (fill) fill.SetPanelEvent("onactivate", function () { DotaKartGameSetup.SetBots(-1); });
+    var grid = DotaKartGameSetup.Find("DKSetupRandomStarts");
+    if (grid) grid.SetPanelEvent("onactivate", DotaKartGameSetup.ToggleRandomStarts);
 
     for (var b = 0; b <= 7; b++) {
         (function (count) {
@@ -444,6 +464,7 @@ function DotaKartSetup_SetBots5() { DotaKartGameSetup.SetBots(5); }
 function DotaKartSetup_SetBots6() { DotaKartGameSetup.SetBots(6); }
 function DotaKartSetup_SetBots7() { DotaKartGameSetup.SetBots(7); }
 function DotaKartSetup_ToggleCollapse() { DotaKartGameSetup.ToggleCollapse(); }
+function DotaKartSetup_ToggleRandomStarts() { DotaKartGameSetup.ToggleRandomStarts(); }
 function DotaKartSetup_JoinRandomTeam() { DotaKartGameSetup.JoinRandomTeam(); }
 function DotaKartSetup_LeaveTeam() { DotaKartGameSetup.LeaveTeam(); }
 function DotaKartSetup_Confirm() { DotaKartGameSetup.Confirm(); }

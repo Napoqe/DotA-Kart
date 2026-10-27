@@ -1,0 +1,5 @@
+Layer0
+{
+	shader "global_lit_simple.vfx"
+	g_vColorTint "[0.2199999988079071 0.14499999582767487 0.07000000029802322 1]"
+}

@@ -3,6 +3,9 @@
     "Language" "english"
     "Tokens"
     {
+        "DOTA_KART_SETUP_STARTING_GRID" "STARTING GRID"
+        "DOTA_KART_SETUP_RANDOM_STARTS_ON" "Random positions: ON"
+        "DOTA_KART_SETUP_RANDOM_STARTS_OFF" "Random positions: OFF"
         "DOTA_KART_SETUP_TITLE" "DOTA KART"
         "DOTA_KART_SETUP_SUBTITLE" "RACE SETTINGS"
         "DOTA_KART_SETUP_LAPS" "LAPS"

@@ -1,0 +1,61 @@
+{
+  "hero": "tinker",
+  "clips": [
+    "kart_idle",
+    "kart_idle_left",
+    "kart_idle_right",
+    "kart_drive",
+    "kart_drive_left",
+    "kart_drive_right",
+    "kart_reverse",
+    "kart_reverse_left",
+    "kart_reverse_right"
+  ],
+  "materials": [
+    {
+      "source_material": "tinker_head_Valve",
+      "vmat": "materials/karts/tinker/tinker_head_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\tinker\\tinker_head_valve_color.tga"
+    },
+    {
+      "source_material": "Wheel_cut_interior",
+      "vmat": "materials/karts/tinker/wheel_cut_interior.vmat",
+      "texture": null
+    },
+    {
+      "source_material": "tinker_right_arm_Valve",
+      "vmat": "materials/karts/tinker/tinker_right_arm_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\tinker\\tinker_right_arm_valve_color.tga"
+    },
+    {
+      "source_material": "tinker_back_Valve",
+      "vmat": "materials/karts/tinker/tinker_back_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\tinker\\tinker_back_valve_color.tga"
+    },
+    {
+      "source_material": "tinker_left_arm_Valve",
+      "vmat": "materials/karts/tinker/tinker_left_arm_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\tinker\\tinker_left_arm_valve_color.tga"
+    },
+    {
+      "source_material": "tinker_shoulder_Valve",
+      "vmat": "materials/karts/tinker/tinker_shoulder_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\tinker\\tinker_shoulder_valve_color.tga"
+    },
+    {
+      "source_material": "tinker_base_head_Valve",
+      "vmat": "materials/karts/tinker/tinker_base_head_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\tinker\\tinker_base_head_valve_color.tga"
+    },
+    {
+      "source_material": "Material",
+      "vmat": "materials/karts/tinker/material.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\tinker\\material_color.png"
+    },
+    {
+      "source_material": "tinker_base_Valve",
+      "vmat": "materials/karts/tinker/tinker_base_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\tinker\\tinker_base_valve_color.tga"
+    }
+  ]
+}

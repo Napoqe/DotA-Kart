@@ -1,3 +1,32 @@
+// Shared by the held-item HUD and the roulette (separate closures).
+var DotaKartImages = {
+    Resolve: function(icon) {
+        var path = String(icon || "");
+        var key = path.toLowerCase();
+        for (var n = 1; n <= 3; n++) {
+            if (key.indexOf("nitro_" + n) !== -1 || key.indexOf(n + "nitro") !== -1)
+                return "s2r://panorama/images/custom_game/nitro/" + n + "nitro_png.vtex";
+        }
+        return path;
+    },
+    SetImage: function(panel, icon) {
+        if (!panel) return;
+        icon = this.Resolve(icon);
+        if (panel.SetImage) panel.SetImage(icon);
+        else panel.style.backgroundImage = 'url("' + icon + '")';
+    }
+};
+
+// Panorama schedules continue during a game pause; server entity thinks do not.
+GameEvents.Subscribe("dotakart_render_refresh_prepare", function(data) {
+    var token = Number(data.token);
+    if (!isFinite(token)) return;
+    $.Schedule(0.20, function() {
+        GameEvents.SendCustomGameEventToServer("dotakart_render_refresh_resume", { token: token });
+    });
+    GameEvents.SendCustomGameEventToServer("dotakart_render_refresh_armed", { token: token });
+});
+
 (function () {
     "use strict";
 
@@ -21,6 +50,9 @@
     // FIX22: metadados reais dos itens do DotA Kart.
     // itemName continua usando itens reais do Dota para inventário/HUD, mas o ícone exibido pode ser ability.
     var ITEM_META = {
+        item_dotakart_counterspell: {type: "ability", icon: "antimage_counterspell", label: "Counterspell", desc: "Reflect all incoming projectiles for 2s; reroll if nothing is reflected."},
+        item_dotakart_nether_ward: { type: "ability", icon: "pugna_nether_ward", label: "Nether Ward", desc: "20s ward; enemy item use within 1500: 75% slow for 1s. Blocks one projectile." },
+        item_dotakart_speed_drain: { type: "ability", icon: "pugna_life_drain", label: "Speed Drain", desc: "Steal 5% speed/sec for up to 10s; cast 1200, break 2000; effects linger 5s." },
         item_phase_boots: {
             type: "custom",
             icon: "nitro_1",
@@ -49,7 +81,7 @@
             type: "ability",
             icon: "pudge_meat_hook",
             label: "Meat Hook",
-            desc: "Alcance 4000, mais rapido. Puxa inimigos ou caixas. S+T lança para tras."
+            desc: "Alcance 6000, mais rapido. Puxa inimigos ou caixas. S+T lança para tras."
         },
         item_blink: {
             type: "ability",
@@ -67,7 +99,7 @@
             type: "ability",
             icon: "mirana_arrow",
             label: "Sacred Arrow",
-            desc: "Flecha ate 5000. Stun aumenta conforme a distancia."
+            desc: "Flecha ate 7500. Stun aumenta conforme a distancia."
         },
         item_cyclone: {
             type: "ability",
@@ -109,7 +141,7 @@
             type: "ability",
             icon: "invoker_tornado",
             label: "Tornado",
-            desc: "Tornado em linha ate 4000. Levanta karts por 3.5s e bloqueia movimento/itens."
+            desc: "Tornado em linha ate 13500. Levanta karts por 3.5s e bloqueia movimento/itens."
         },
         item_mage_slayer: {
             type: "ability",
@@ -175,7 +207,7 @@
             type: "ability",
             icon: "spectre_spectral_dagger",
             label: "Spectral Dagger",
-            desc: "Adaga teleguiada que cria Shadow Path; inimigos no caminho recebem slow."
+            desc: "Persegue o alvo até atingir. Shadow Path: +10% na própria sombra, 10% de slow na rival, sem acumular."
         },
         item_dotakart_battle_hunger: {
             type: "ability",
@@ -190,15 +222,15 @@
             desc: "Projétil range 2000; marca por 5s e retorna o kart ao X. S+T lança para trás."
         },
         item_dotakart_doppelwalk: { type: "ability", icon: "phantom_lancer_doppelwalk", label: "Doppelwalk", desc: "8s invisibility, +10% max speed and a moving decoy that can fool homing items." },
-        item_dotakart_shukuchi: { type: "ability", icon: "weaver_shukuchi", label: "Shukuchi", desc: "Disjoints homing items, becomes invisible/phased and gains 1.5x max speed for 4s; stuns racers passed through." },
-        item_dotakart_crystal_clone: { type: "ability", icon: "crystal_maiden_crystal_clone", label: "Crystal Clone", desc: "Places a 90s Crystal Maiden clone that explodes on kart/projectile contact and Frostbites nearby racers." },
+        item_dotakart_shukuchi: { type: "ability", icon: "weaver_shukuchi", label: "Shukuchi", desc: "Disjoints homing items, becomes invisible/phased and gains 2.25x max speed for 4s; stuns racers passed through." },
+        item_dotakart_crystal_clone: { type: "ability", icon: "crystal_maiden_crystal_clone", label: "Crystal Clone", desc: "Slides forward 500 at 1500.67 speed and leaves a 90s Crystal Maiden clone that explodes on kart/projectile contact and Frostbites nearby racers." },
         item_dotakart_astral_imprisonment: { type: "ability", icon: "obsidian_destroyer_astral_imprisonment", label: "Astral Imprisonment", desc: "Imprisons an adjacent-position rival for 4s; Q self-casts for mobile invulnerable protection." },
         item_dotakart_ball_lightning: { type: "ability", icon: "storm_spirit_ball_lightning", label: "Ball Lightning", desc: "Press T to activate; press T again to stop while preserving remaining charges. Reaching 0 charges removes the item and leaves a Static Remnant." },
         item_dotakart_homing_missile: { type: "ability", icon: "gyrocopter_homing_missile", label: "Homing Missile", desc: "Tracks the racer one place ahead through the course; S+T targets one place behind. Longer travel means a longer stun." },
-        item_dotakart_plague_ward: { type: "ability", icon: "venomancer_plague_ward", label: "Plague Ward", desc: "Orbits for 45s, blocks enemy projectiles and fires poison shots that slow without dealing damage." },
+        item_dotakart_plague_ward: { type: "ability", icon: "venomancer_plague_ward", label: "Plague Ward", desc: "Orbits for up to 45s, sacrifices itself to cancel one enemy projectile and fires poison shots that slow without dealing damage." },
         item_dotakart_the_swarm: { type: "ability", icon: "weaver_the_swarm", label: "The Swarm", desc: "Launches Beetles that latch onto enemy karts and build 3% movement slow every second for 16s." },
-        item_dotakart_storm_hammer: { type: "ability", icon: "sven_storm_bolt", label: "Storm Hammer", desc: "1700 range; stuns racers in a 300 AoE for 2.5s. Forward casts carry the kart only when a racer or Item Box target is acquired; S+T throws backward." },
-        item_dotakart_illusory_orb: { type: "ability", icon: "puck_illusory_orb", label: "Illusory Orb", desc: "Launches a slowing orb; press T again to teleport to it and create a short Dream Coil." },
+        item_dotakart_storm_hammer: { type: "ability", icon: "sven_storm_bolt", label: "Storm Hammer", desc: "2550 range; stuns racers in a 300 AoE for 2.5s. Forward casts carry the kart only when a racer or Item Box target is acquired; S+T throws backward." },
+        item_dotakart_illusory_orb: { type: "ability", icon: "puck_illusory_orb", label: "Illusory Orb", desc: "Launches a slowing orb with 6000 range and 1.5x projectile speed; press T again to teleport to it and create a short Dream Coil." },
         item_dotakart_torrent_storm: {
             type: "ability",
             icon: "kunkka_torrent",
@@ -219,35 +251,6 @@
 
     function Clamp(value, minValue, maxValue) {
         return Math.max(minValue, Math.min(maxValue, value));
-    }
-
-    var DOTA_KART_NITRO_ICON_FILES = {
-        // FIX106: usar o PNG original em content/materials; o Source 2 Resource
-        // resolve para o VTEX compilado em game/materials/items/nitro.
-        // Não usar *_png.vtex_c nem hash compilado direto no Panorama.
-        nitro_1: "s2r://materials/items/nitro/1Nitro.png",
-        nitro_2: "s2r://materials/items/nitro/2Nitro.png",
-        nitro_3: "s2r://materials/items/nitro/3Nitro.png"
-    };
-
-    function ResolveCustomImagePath(icon) {
-        icon = String(icon || "");
-
-        if (icon === "nitro_1" || icon.indexOf("nitro_1") !== -1 || icon.indexOf("1nitro") !== -1) return DOTA_KART_NITRO_ICON_FILES.nitro_1;
-        if (icon === "nitro_2" || icon.indexOf("nitro_2") !== -1 || icon.indexOf("2nitro") !== -1) return DOTA_KART_NITRO_ICON_FILES.nitro_2;
-        if (icon === "nitro_3" || icon.indexOf("nitro_3") !== -1 || icon.indexOf("3nitro") !== -1) return DOTA_KART_NITRO_ICON_FILES.nitro_3;
-
-        return icon;
-    }
-
-    function SetCustomImageSafe(panel, icon) {
-        if (!panel) return;
-        icon = ResolveCustomImagePath(icon);
-
-        try { if (panel.SetImage) panel.SetImage(icon); } catch (e1) {}
-        try { panel.src = icon; } catch (e2) {}
-        try { panel.style.backgroundImage = 'url("' + icon + '")'; } catch (e3) {}
-        try { panel.style.backgroundSize = "100% 100%"; } catch (e4) {}
     }
 
     function GetHeroIconName(heroName) {
@@ -375,6 +378,7 @@
         SetClass(itemBox, "HasItem", hasItem);
         SetClass(itemBox, "NoItem", !hasItem);
         SetClass(itemBox, "HasCharges", hasCharges);
+        SetClass(itemBox, "NitroIcon", isCustomIcon && String(meta.icon).indexOf("nitro_") === 0);
 
         if (itemImage) {
             itemImage.visible = !!(hasItem && !isAbilityIcon && !isCustomIcon);
@@ -390,7 +394,7 @@
             customImage.visible = !!isCustomIcon;
             customImage.style.visibility = isCustomIcon ? "visible" : "collapse";
             if (isCustomIcon) {
-                SetCustomImageSafe(customImage, meta.icon || "");
+                DotaKartImages.SetImage(customImage, meta.icon || "");
             }
         }
         if (chargeLabel) {
@@ -551,8 +555,37 @@
         $.Msg("[DotaKartHUD] Mini-map path renderizado: " + points.length + " pontos.");
     }
 
+    function UpdateMiniFinishGate(state) {
+        if (state.finish_gate_visible === undefined) return;
+        var parent = Find("#DKMiniTrack");
+        if (!parent) return;
+        var gate = Find("#DKMiniFinishGate");
+        if (!gate) gate = $.CreatePanel("Panel", parent, "DKMiniFinishGate");
+        if (!gate.BHasClass("DKMiniFinishStripe")) {
+            gate.RemoveAndDeleteChildren();
+            gate.AddClass("DKMiniFinishStripe");
+            gate.hittest = false;
+            for (var row = 0; row < 2; row++) {
+                for (var col = 0; col < 6; col++) {
+                    var tile = $.CreatePanel("Panel", gate, "");
+                    tile.hittest = false;
+                    tile.AddClass("DKMiniFinishTile");
+                    tile.SetHasClass("Dark", (row + col) % 2 === 0);
+                    tile.style.position = (1 + col * 4) + "px " + (1 + row * 4) + "px 0px";
+                }
+            }
+        }
+        gate.visible = ToNumber(state.finish_gate_visible, 0) === 1;
+        if (gate.visible) {
+            var x = Math.floor(MiniX(Clamp(ToNumber(state.finish_gate_x, 0.5), 0, 1)) - 13);
+            var y = Math.floor(MiniY(Clamp(ToNumber(state.finish_gate_y, 0.5), 0, 1)) - 5);
+            gate.style.position = x + "px " + y + "px 0px";
+        }
+    }
+
     function UpdateMiniMap(state) {
         state = state || {};
+        UpdateMiniFinishGate(state);
         var marker = Find("#DKMiniMarker");
         if (!marker) return;
 
@@ -893,6 +926,9 @@
         "item_dotakart_ball_lightning",
         "item_dotakart_homing_missile",
         "item_dotakart_plague_ward",
+        "item_dotakart_nether_ward",
+        "item_dotakart_counterspell",
+        "item_dotakart_speed_drain",
         "item_dotakart_the_swarm",
         "item_dotakart_storm_hammer",
         "item_dotakart_illusory_orb",
@@ -901,6 +937,9 @@
 
     // ITEM_META do primeiro bloco é local àquele escopo; duplicamos o mínimo aqui para a roleta visual.
     var ROULETTE_ITEM_META = {
+        item_dotakart_counterspell: {type: "ability", icon: "antimage_counterspell", label: "Counterspell", desc: "Reflect all incoming projectiles for 2s; reroll if nothing is reflected."},
+        item_dotakart_nether_ward: { type: "ability", icon: "pugna_nether_ward", label: "Nether Ward", desc: "20s ward; enemy item use within 1500: 75% slow for 1s. Blocks one projectile." },
+        item_dotakart_speed_drain: { type: "ability", icon: "pugna_life_drain", label: "Speed Drain", desc: "Steal 5% speed/sec for up to 10s; cast 1200, break 2000; effects linger 5s." },
         item_phase_boots: { type: "custom", icon: "nitro_1", label: "1 Nitro" },
         item_yasha: { type: "custom", icon: "nitro_2", label: "2 Nitros" },
         item_mask_of_madness: { type: "custom", icon: "nitro_3", label: "3 Nitros" },
@@ -1165,7 +1204,7 @@
     }
 
     function SetCustomRouletteImageSafe(panel, icon) {
-        SetCustomImageSafe(panel, icon);
+        DotaKartImages.SetImage(panel, icon);
     }
 
     function PlayUISound(data) {
@@ -1214,6 +1253,7 @@
             itemBox.SetHasClass("HasItem", true);
             itemBox.SetHasClass("NoItem", false);
             itemBox.SetHasClass("RouletteRolling", true);
+            itemBox.SetHasClass("NitroIcon", isCustomIcon && String(meta.icon).indexOf("nitro_") === 0);
         }
         if (itemImage) {
             itemImage.visible = !isAbilityIcon && !isCustomIcon;

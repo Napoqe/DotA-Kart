@@ -1,0 +1,6 @@
+Layer0
+{
+ shader "global_lit_simple.vfx"
+ TextureColor "materials/radiant_billboards/rb_wood.png"
+ g_vColorTint "[1 1 1 0]"
+}

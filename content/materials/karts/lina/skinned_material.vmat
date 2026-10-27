@@ -1,0 +1,6 @@
+Layer0
+{
+	shader "hero.vfx"
+	TextureColor "materials/karts/lina/material_color.png"
+	g_vColorTint "[1 1 1 1]"
+}

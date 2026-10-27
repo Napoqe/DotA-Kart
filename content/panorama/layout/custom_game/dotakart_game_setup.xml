@@ -46,6 +46,10 @@
                     </Panel>
                 </Panel>
 
+                <Panel class="DKSetupSection" hittest="true" hittestchildren="true">
+                    <Label class="DKSetupSectionTitle" text="#DOTA_KART_SETUP_STARTING_GRID" />
+                    <Button id="DKSetupRandomStarts" class="DKSetupWideButton DKSetupSelected" hittest="true" onactivate="DotaKartSetup_ToggleRandomStarts()"><Label id="DKSetupRandomStartsLabel" text="#DOTA_KART_SETUP_RANDOM_STARTS_ON" /></Button>
+                </Panel>
                 <Label id="DKSetupHostStatus" class="DKSetupHostStatus" text="#DOTA_KART_SETUP_STATUS_HOST_ONLY" />
                 <Label id="DKSetupHint" class="DKSetupHint" text="#DOTA_KART_SETUP_HINT" />
             </Panel>

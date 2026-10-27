@@ -2,18 +2,74 @@
 {
     "Version" "1"
 
-    // FIX88: only Invoker uses a custom DotA Kart hero for now.
-    // Other pilots use the normal Dota heroes until their custom kart VMDLs are ready.
+    // Preserve the existing selectable Invoker ID; all pilots use combined kart visuals.
     "npc_dota_hero_dotakart_invoker"
     {
         "override_hero"      "npc_dota_hero_invoker"
         "Enabled"            "1"
-        "Model"              "models/invoker/invoker_kart.vmdl"
-        "ModelScale"         "2.0"
-        "LoadoutScale"       "2.0"
+        "Model"              "models/karts/invoker/seated/invoker_kart.vmdl"
+        "ModelScale"         "1.2"
+        "LoadoutScale"       "1.2"
         "DisableWearables"   "1"
         "ItemSlots"
         {
         }
+    }
+
+    // Seated downloaded pilots contain the original outfit.
+    "npc_dota_hero_invoker"
+    {
+        "Model" "models/karts/invoker/seated/invoker_kart.vmdl"
+        "ModelScale" "1.2"
+        "DisableWearables" "1"
+    }
+
+    "npc_dota_hero_brewmaster"
+    {
+        "Model" "models/karts/brewmaster/seated/brewmaster_kart.vmdl"
+        "ModelScale" "1.2"
+        "DisableWearables" "1"
+    }
+
+    "npc_dota_hero_tinker"
+    {
+        "Model" "models/karts/tinker/seated/tinker_kart.vmdl"
+        "ModelScale" "1.2"
+        "DisableWearables" "1"
+    }
+
+    "npc_dota_hero_lina"
+    {
+        "Model" "models/karts/lina/seated/lina_kart.vmdl"
+        "ModelScale" "1.2"
+        "DisableWearables" "1"
+    }
+
+    "npc_dota_hero_pudge"
+    {
+        "Model" "models/karts/pudge/seated/pudge_kart.vmdl"
+        "ModelScale" "1.2"
+        "DisableWearables" "1"
+    }
+
+    "npc_dota_hero_tiny"
+    {
+        "Model" "models/karts/tiny/seated/tiny_kart.vmdl"
+        "ModelScale" "1.2"
+        "DisableWearables" "1"
+    }
+
+    "npc_dota_hero_mirana"
+    {
+        "Model" "models/karts/mirana/seated/mirana_kart.vmdl"
+        "ModelScale" "1.2"
+        "DisableWearables" "1"
+    }
+
+    "npc_dota_hero_juggernaut"
+    {
+        "Model" "models/karts/juggernaut/seated/juggernaut_kart.vmdl"
+        "ModelScale" "1.2"
+        "DisableWearables" "1"
     }
 }

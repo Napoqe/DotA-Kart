@@ -20,8 +20,8 @@ function DotaKartCamera:Init()
 
         -- Ajustes principais estilo MK64.
         distance = 720,
-        pitch = 36,
-        height_offset = 115,
+        pitch = 32,
+        height_offset = 135,
         look_ahead = 240,
 
         -- FIX10:
@@ -120,8 +120,8 @@ end
 
 function DotaKartCamera:SetPresetMK64()
     self.config.distance = 720
-    self.config.pitch = 36
-    self.config.height_offset = 115
+    self.config.pitch = 32
+    self.config.height_offset = 135
     self.config.look_ahead = 240
     self.config.yaw_offset = 270
     self.config.direction_mode = "movement"

@@ -1,0 +1,91 @@
+{
+  "hero": "invoker",
+  "clips": [
+    "kart_idle",
+    "kart_idle_left",
+    "kart_idle_right",
+    "kart_drive",
+    "kart_drive_left",
+    "kart_drive_right",
+    "kart_reverse",
+    "kart_reverse_left",
+    "kart_reverse_right"
+  ],
+  "materials": [
+    {
+      "source_material": "invoker_back_Valve",
+      "vmat": "materials/karts/invoker/invoker_back_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\invoker\\invoker_back_valve_color.tga"
+    },
+    {
+      "source_material": "invoker_arms_Valve",
+      "vmat": "materials/karts/invoker/invoker_arms_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\invoker\\invoker_arms_valve_color.tga"
+    },
+    {
+      "source_material": "invoker_base_head_Valve",
+      "vmat": "materials/karts/invoker/invoker_base_head_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\invoker\\invoker_base_head_valve_color.tga"
+    },
+    {
+      "source_material": "invoker_belt_detail_Valve",
+      "vmat": "materials/karts/invoker/invoker_belt_detail_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\invoker\\invoker_belt_detail_valve_color.tga"
+    },
+    {
+      "source_material": "invoker_belt_front_Valve",
+      "vmat": "materials/karts/invoker/invoker_belt_front_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\invoker\\invoker_belt_front_valve_color.tga"
+    },
+    {
+      "source_material": "Invoker_bronze_tread",
+      "vmat": "materials/karts/invoker/invoker_bronze_tread.vmat",
+      "texture": null
+    },
+    {
+      "source_material": "invoker_shoulder_Valve",
+      "vmat": "materials/karts/invoker/invoker_shoulder_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\invoker\\invoker_shoulder_valve_color.tga"
+    },
+    {
+      "source_material": "invoker_back_backface_Valve",
+      "vmat": "materials/karts/invoker/invoker_back_backface_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\invoker\\invoker_back_backface_valve_color.tga"
+    },
+    {
+      "source_material": "invoker_base_Valve",
+      "vmat": "materials/karts/invoker/invoker_base_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\invoker\\invoker_base_valve_color.tga"
+    },
+    {
+      "source_material": "invoker_base_buttons_Valve",
+      "vmat": "materials/karts/invoker/invoker_base_buttons_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\invoker\\invoker_base_buttons_valve_color.tga"
+    },
+    {
+      "source_material": "invoker_belt_Valve",
+      "vmat": "materials/karts/invoker/invoker_belt_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\invoker\\invoker_belt_valve_color.tga"
+    },
+    {
+      "source_material": "invoker_belt_front_frills_Valve",
+      "vmat": "materials/karts/invoker/invoker_belt_front_frills_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\invoker\\invoker_belt_front_frills_valve_color.tga"
+    },
+    {
+      "source_material": "Wheel_cut_interior",
+      "vmat": "materials/karts/invoker/wheel_cut_interior.vmat",
+      "texture": null
+    },
+    {
+      "source_material": "invoker_head_Valve",
+      "vmat": "materials/karts/invoker/invoker_head_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\invoker\\invoker_head_valve_color.tga"
+    },
+    {
+      "source_material": "Material",
+      "vmat": "materials/karts/invoker/material.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\invoker\\material_color.png"
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "hero": "juggernaut",
+  "clips": [
+    "kart_idle",
+    "kart_idle_left",
+    "kart_idle_right",
+    "kart_drive",
+    "kart_drive_left",
+    "kart_drive_right",
+    "kart_reverse",
+    "kart_reverse_left",
+    "kart_reverse_right"
+  ],
+  "materials": [
+    {
+      "source_material": "juggernaut_arms_Valve",
+      "vmat": "materials/karts/juggernaut/juggernaut_arms_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\juggernaut\\juggernaut_arms_valve_color.tga"
+    },
+    {
+      "source_material": "juggernaut_legs_feet_Valve",
+      "vmat": "materials/karts/juggernaut/juggernaut_legs_feet_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\juggernaut\\juggernaut_legs_feet_valve_color.tga"
+    },
+    {
+      "source_material": "juggernaut_legs_legs_Valve",
+      "vmat": "materials/karts/juggernaut/juggernaut_legs_legs_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\juggernaut\\juggernaut_legs_legs_valve_color.tga"
+    },
+    {
+      "source_material": "juggernaut_back_belt_Valve",
+      "vmat": "materials/karts/juggernaut/juggernaut_back_belt_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\juggernaut\\juggernaut_back_belt_valve_color.tga"
+    },
+    {
+      "source_material": "juggernaut_base_Valve",
+      "vmat": "materials/karts/juggernaut/juggernaut_base_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\juggernaut\\juggernaut_base_valve_color.tga"
+    },
+    {
+      "source_material": "juggernaut_legs_armor_Valve",
+      "vmat": "materials/karts/juggernaut/juggernaut_legs_armor_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\juggernaut\\juggernaut_legs_armor_valve_color.tga"
+    },
+    {
+      "source_material": "Material",
+      "vmat": "materials/karts/juggernaut/material.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\juggernaut\\material_color.png"
+    },
+    {
+      "source_material": "Wheel_cut_interior",
+      "vmat": "materials/karts/juggernaut/wheel_cut_interior.vmat",
+      "texture": null
+    },
+    {
+      "source_material": "juggernaut_head_Valve",
+      "vmat": "materials/karts/juggernaut/juggernaut_head_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\juggernaut\\juggernaut_head_valve_color.tga"
+    },
+    {
+      "source_material": "juggernaut_back_fur_Valve",
+      "vmat": "materials/karts/juggernaut/juggernaut_back_fur_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\juggernaut\\juggernaut_back_fur_valve_color.tga"
+    }
+  ]
+}

@@ -1,10 +1,12 @@
 <root>
     <styles>
         <include src="file://{resources}/styles/custom_game/hud.css" />
+        <include src="file://{resources}/styles/custom_game/dotakart_nameplates.css" />
     </styles>
 
     <scripts>
         <include src="file://{resources}/scripts/custom_game/hud.js" />
+        <include src="file://{resources}/scripts/custom_game/dotakart_nameplates.js" />
         <include src="file://{resources}/scripts/custom_game/dotakart_camera.js" />
         <include src="file://{resources}/scripts/custom_game/dotakart_input.js" />
     </scripts>
@@ -16,6 +18,7 @@
     -->
     <Panel class="DotaKartHUDRoot" hittest="false" hittestchildren="true">
         <Panel id="DotaKartHUD" hittest="false" hittestchildren="true">
+            <Panel id="DKNameplates" hittest="false" hittestchildren="false" />
             <!-- Topo: volta, item e tempo -->
             <Panel id="DKTopHud" hittest="false">
                 <Panel id="DKLapBox" class="DKBox" hittest="false">
@@ -24,9 +27,11 @@
                 </Panel>
 
                 <Panel id="DKItemBox" class="DKBox NoItem" hittest="false">
+                    <Panel id="DKNitroAbilityBorder" hittest="false" />
                     <DOTAItemImage id="DKItemImage" itemname="" />
                     <DOTAAbilityImage id="DKAbilityImage" abilityname="" />
                     <Image id="DKCustomItemImage" src="" />
+                    <Panel id="DKNitroAbilityBevel" hittest="false" />
                     <Label id="DKItemEmpty" text="?" />
                     <Label id="DKItemCharges" text="" />
                     <Panel id="DKItemInfoPanel" hittest="false">

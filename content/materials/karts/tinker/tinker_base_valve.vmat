@@ -1,0 +1,6 @@
+Layer0
+{
+	shader "global_lit_simple.vfx"
+	TextureColor "materials/karts/tinker/tinker_base_valve_color.tga"
+	g_vColorTint "[1 1 1 1]"
+}

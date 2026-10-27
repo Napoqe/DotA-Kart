@@ -2,6 +2,8 @@
 -- FIX51: hook pass-through collision exception + Green Shell support.
 -- W = acelerar, S = ré/freio, A = virar esquerda, D = virar direita, T = usar item.
 -- Movimento é feito pelo servidor com SetAbsOrigin, sem enviar ordens Move/Stop a cada tick.
+require("dotakart/kart_animation")
+require("dotakart/kart_handling")
 
 if DotaKartController == nil then
     DotaKartController = class({})
@@ -166,6 +168,8 @@ function DotaKartController:Init(hud)
         brake_acceleration = 1450,
         reverse_acceleration = 560,
         friction = 540,
+        engine_sound_enabled = true,
+        engine_sound_clip_duration = 1.8,
         turn_rate = 150,
         min_turn_speed = 55,
         turn_at_zero_factor = 0.20,
@@ -220,9 +224,11 @@ function DotaKartController:Init(hud)
 
         -- FIX30: drift/derrapagem visual ao virar em alta velocidade.
         drift_enabled = true,
-        drift_min_speed = 560,
-        drift_lateral_factor = 0.34,
-        drift_speed_loss_factor = 0.985,
+        drift_min_speed = 360,
+        drift_hold_time = 0.12,
+        drift_max_angle = 28,
+        drift_grip = 3.4,
+        drift_speed_loss_per_second = 0.08,
 
         -- FIX89: penalidade off-road. Fora da faixa da pista/dk_track_* ou em tile sem Path,
         -- o kart perde velocidade e fica instável. Star/BKB ignora a penalidade.
@@ -259,6 +265,9 @@ function DotaKartController:Init(hud)
     CustomGameEventManager:RegisterListener("dotakart_input_state", function(eventSourceIndex, keys)
         return DotaKartController:OnInputState(eventSourceIndex, keys)
     end)
+    CustomGameEventManager:RegisterListener("dotakart_input_debug", function(eventSourceIndex, keys)
+        return DotaKartController:ReportInputDiagnostic(eventSourceIndex, keys)
+    end)
     CustomGameEventManager:RegisterListener("dotakart_input_item", function(eventSourceIndex, keys)
         return DotaKartController:OnInputItem(eventSourceIndex, keys)
     end)
@@ -281,6 +290,18 @@ function DotaKartController:Init(hud)
     Convars:RegisterCommand("dk_kart_stop", function()
         self:HardStopAll()
     end, "DotA Kart: zera velocidade dos karts", FCVAR_CHEAT)
+
+    if IsInToolsMode and IsInToolsMode() then
+        Convars:RegisterCommand("dk_recover_controls", function()
+            DoIncludeScript("dotakart/dev/recover_controls.lua", getfenv(0))
+        end, "DotA Kart: recarrega a correcao visual e reinicia o controle apos erro Lua", FCVAR_CHEAT)
+        Convars:RegisterCommand("dk_validate_karts", function()
+            DoIncludeScript("dotakart/dev/validate_karts.lua", getfenv(0))
+        end, "DotA Kart: verifica modelos e reproducao dos clipes no motor", FCVAR_CHEAT)
+        Convars:RegisterCommand("dk_validate_driving", function()
+            DoIncludeScript("dotakart/dev/validate_driving.lua", getfenv(0))
+        end, "DotA Kart: testa frente, re, curvas e drift e restaura o kart", FCVAR_CHEAT)
+    end
 
     Convars:RegisterCommand("dk_give_boost", function()
         self:GiveBoostToAll()
@@ -379,19 +400,93 @@ function DotaKartController:SetEnabled(enabled)
     self.enabled = enabled == true
     print("[DotaKartController] enabled = " .. tostring(self.enabled))
 
-    if not self.enabled then
+    if self.enabled then
+        -- The normal client can reach GO without ever invoking the timer armed
+        -- during addon initialization. Arm it again after race setup completes.
+        self:StartThink(true, "race_enabled")
+    else
         self:HardStopAll()
     end
 end
 
-function DotaKartController:StartThink()
-    if self._thinkStarted then return end
+function DotaKartController:StartThink(force, reason)
+    if self._thinkStarted and not force then return end
     self._thinkStarted = true
     self._lastThinkTime = DKNow()
+    self._thinkArms = (self._thinkArms or 0) + 1
+    self._lastThinkArmReason = reason or "initialization"
 
     GameRules:GetGameModeEntity():SetContextThink("DotaKartControllerThink", function()
-        return self:OnThink()
+        -- A failure in audio/visual maintenance must not permanently remove the
+        -- human controller's timer while the independent bot timer keeps running.
+        -- Do not evaluate debug.traceback here: if the host omits debug helpers,
+        -- that evaluation fails before the protected call even enters OnThink.
+        self._thinkCallbacks = (self._thinkCallbacks or 0) + 1
+        local ok, result = pcall(self.OnThink, self)
+        if ok then return result end
+        self._lastThinkError = tostring(result)
+        local now = DKNow()
+        if now >= (self._nextThinkErrorReport or 0) then
+            self._nextThinkErrorReport = now + 5
+            print("[DotaKartController] think failed at " .. tostring(self._thinkStage) .. ": " .. self._lastThinkError)
+        end
+        return self.config.tick_rate
     end, self.config.tick_rate)
+end
+
+-- Read-only feedback reaches the requesting client even on a dedicated Arcade
+-- server, where server console output is not visible in the client's console.
+function DotaKartController:ReportInputDiagnostic(eventSourceIndex, keys)
+    local playerID = DKGetPlayerIDFromEvent(eventSourceIndex, keys)
+    if playerID < 0 or not PlayerResource:IsValidPlayerID(playerID) then return end
+    local player = PlayerResource:GetPlayer(playerID)
+    if player == nil then return end
+    local now = DKNow()
+    local st = self:GetState(playerID)
+    local hero = self:GetHeroForPlayer(playerID)
+    local input = st.input or {}
+    local reason = "ready"
+    if not self.enabled then reason = "controller_disabled"
+    elseif not DKValidUnit(hero) then reason = "missing_hero"
+    elseif self:IsPublicAIControlled(playerID, hero) then reason = "marked_as_bot"
+    elseif self.hud and self.hud.IsPlayerFinished and self.hud:IsPlayerFinished(playerID) then reason = "finished"
+    elseif st.anti_skip_glimpse_active then reason = "anti_skip"
+    elseif (st.astral_enemy_until or 0) > now then reason = "astral"
+    elseif st.storm_hammer_transport_active then reason = "storm_hammer"
+    elseif (st.stunned_until or 0) > now then reason = "stunned"
+    elseif (st.locked_until or 0) > now then reason = "locked"
+    elseif (st.rooted_until or 0) > now then reason = "rooted" end
+    local pos = DKValidUnit(hero) and hero:GetAbsOrigin() or Vector(0, 0, 0)
+    local selectedHero = PlayerResource:GetSelectedHeroEntity(playerID)
+    CustomGameEventManager:Send_ServerToPlayer(player, "dotakart_input_debug", {
+        player_id = playerID,
+        enabled = self.enabled and 1 or 0,
+        paused = GameRules:IsGamePaused() and 1 or 0,
+        tools_mode = IsInToolsMode and IsInToolsMode() and 1 or 0,
+        reason = reason,
+        forward = input.forward and 1 or 0,
+        reverse = input.reverse and 1 or 0,
+        left = input.left and 1 or 0,
+        right = input.right and 1 or 0,
+        speed = tonumber(st.speed) or 0,
+        hero_entindex = DKValidUnit(hero) and hero:entindex() or -1,
+        selected_hero_entindex = DKValidUnit(selectedHero) and selectedHero:entindex() or -1,
+        hero_alive = DKValidUnit(hero) and hero:IsAlive() and 1 or 0,
+        yaw = tonumber(st.yaw) or 0,
+        x = pos.x, y = pos.y, z = pos.z,
+        input_age = st.last_input_received_at and now - st.last_input_received_at or -1,
+        think_age = self._lastThinkTime and now - self._lastThinkTime or -1,
+        think_ticks = self._thinkTicks or 0,
+        think_callbacks = self._thinkCallbacks or 0,
+        think_arms = self._thinkArms or 0,
+        think_arm_reason = self._lastThinkArmReason or "",
+        think_stage = self._thinkStage or "not_started",
+        think_error = self._lastThinkError or "",
+        lua_debug_type = type(debug),
+        lua_traceback_type = type(debug) == "table" and type(debug.traceback) or "nil",
+        lua_xpcall_type = type(xpcall),
+        world_collision = st.last_world_collision_reason or ""
+    })
 end
 
 function DotaKartController:GetState(playerID)
@@ -416,6 +511,8 @@ function DotaKartController:GetState(playerID)
             rooted_until = 0,
             spectral_path_buff_until = 0,
             spectral_path_bonus_pct = 0,
+            spectral_path_slow_until = 0,
+            spectral_path_slow_pct = 0,
             spectral_unobstructed_until = 0,
             spectral_recovery_started = 0,
             spectral_last_safe_track_x = nil,
@@ -454,8 +551,8 @@ function DotaKartController:GetState(playerID)
             bump_push_x = 0,
             bump_push_y = 0,
             last_debug_time = 0,
-            custom_engine_loop_started = false,
-            custom_engine_loop_entindex = -1
+            engine_sound_playing = false,
+            engine_sound_next_play = 0
         }
     end
     return self.states[playerID]
@@ -546,44 +643,95 @@ function DotaKartController:IsInvokerCustomKart(hero)
     return unitName == "npc_dota_hero_dotakart_invoker" or modelName == "models/invoker/invoker_kart.vmdl"
 end
 
-function DotaKartController:EnsureCustomKartEngineLoop(playerID, hero, st)
-    if not DKValidUnit(hero) or st == nil then return end
-    if not self:IsInvokerCustomKart(hero) then return end
+function DotaKartController:StopKartEngineSound(st)
+    if st == nil then return end
+    if st.engine_sound_playing == true and DKValidUnit(st.engine_sound_hero) then
+        pcall(function() StopSoundOn(st.engine_sound_event or "dotakart_engine_accelerate", st.engine_sound_hero) end)
+    end
+    st.engine_sound_playing = false
+    st.engine_sound_next_play = 0
+    st.engine_sound_hero = nil
+    st.engine_sound_event = nil
+    st.engine_sound_mode = nil
+end
 
-    local ent = -1
-    pcall(function() ent = hero:entindex() end)
-    local now = GameRules ~= nil and GameRules.GetGameTime ~= nil and GameRules:GetGameTime() or 0
-
-    -- FIX113: RegisterHero acontece antes da largada. O FIX112 marcava o som como
-    -- iniciado nesse momento; se a transição para a corrida encerrasse a voz, o
-    -- controller nunca a iniciava novamente. Durante a corrida renovamos a voz
-    -- periodicamente e block_matching_entity impede empilhamento.
-    if tonumber(st.custom_engine_loop_entindex) ~= tonumber(ent) then
-        st.custom_engine_loop_started = false
-        st.custom_engine_loop_entindex = ent
-        st.custom_engine_loop_next_refresh = 0
+function DotaKartController:UpdateKartEngineSound(playerID, hero, st, now)
+    if st == nil then return end
+    if st.engine_sound_hero ~= nil and st.engine_sound_hero ~= hero then
+        self:StopKartEngineSound(st)
     end
 
-    if st.custom_engine_loop_started == true and now < (tonumber(st.custom_engine_loop_next_refresh) or 0) then return end
-
-    pcall(function() StopSoundOn("dotakart_engine_idle", hero) end)
-    if StopSoundEvent ~= nil then
-        pcall(function() StopSoundEvent("dotakart_engine_idle", hero) end)
+    local hud = self.hud or GameRules.DotaKartHUD
+    local blocked = not self.enabled or self.config.engine_sound_enabled == false
+        or not DKValidUnit(hero)
+        or (hud ~= nil and hud.raceRunning == false)
+        or (st.astral_enemy_until or 0) > now
+        or st.anti_skip_glimpse_active == true or st.storm_hammer_transport_active == true
+    if not blocked and hero.IsAlive ~= nil then blocked = not hero:IsAlive() end
+    if not blocked and hud ~= nil and hud.IsPlayerFinished ~= nil then
+        blocked = hud:IsPlayerFinished(playerID)
     end
-    pcall(function() EmitSoundOn("dotakart_engine_idle", hero) end)
-    pcall(function() StartSoundEvent("dotakart_engine_idle", hero) end)
+    if blocked then
+        self:StopKartEngineSound(st)
+        return
+    end
 
-    st.custom_engine_loop_started = true
-    st.custom_engine_loop_entindex = ent
-    st.custom_engine_loop_next_refresh = now + 4.0
+    local movementBlocked = (st.stunned_until or 0) > now
+        or (st.locked_until or 0) > now or (st.rooted_until or 0) > now
+    local accelerating = false
+    if not movementBlocked then
+        if self:IsPublicAIControlled(playerID, hero) or not PlayerResource:IsValidPlayerID(playerID) then
+            -- Bots move through their own physics path and do not send W/S input.
+            accelerating = math.abs(tonumber(st.speed) or 0) > 55
+        else
+            local input = st.input or {}
+            accelerating = (input.forward == true and input.reverse ~= true)
+                or (input.reverse == true and input.forward ~= true and (st.speed or 0) <= 45)
+                or st.ball_lightning_active == true
+        end
+    end
+    local driving = not movementBlocked and (accelerating or math.abs(tonumber(st.speed) or 0) > 55)
+    local mode = "idle"
+    if driving then
+        if st.engine_sound_mode == "running" then
+            mode = "running"
+        elseif st.engine_sound_mode == "accelerate" then
+            if now < (st.engine_sound_next_play or 0) then return end
+            mode = "running"
+        else
+            mode = "accelerate"
+        end
+    end
+    if st.engine_sound_playing == true and st.engine_sound_mode == mode then return end
+
+    -- One 3D voice per kart: idle loop, one rev-up, then a sustained running loop.
+    -- Movement locks affect this sound choice only; all physics stay unchanged.
+    self:StopKartEngineSound(st)
+    local event = "dotakart_engine_" .. mode
+    local ok = pcall(function() EmitSoundOn(event, hero) end)
+    if ok then
+        st.engine_sound_playing = true
+        st.engine_sound_hero = hero
+        st.engine_sound_event = event
+        st.engine_sound_mode = mode
+        if mode == "accelerate" then
+            st.engine_sound_next_play = now + (tonumber(self.config.engine_sound_clip_duration) or 1.8)
+        end
+    end
 end
 
 function DotaKartController:RegisterHero(playerID, hero)
     if playerID == nil or playerID < 0 then return end
     if not DKValidUnit(hero) then return end
 
-    self.heroes[playerID] = hero
     local st = self:GetState(playerID)
+    self:StopKartEngineSound(st)
+    local oldHero = self.heroes[playerID]
+    if DKValidUnit(oldHero) then
+        pcall(function() StopSoundOn("dotakart_engine_idle", oldHero) end)
+    end
+    self.heroes[playerID] = hero
+    DotaKartHandling:Reset(st, st.yaw)
 
     if st.yaw == nil then
         st.yaw = self:GetTrackYawForHero(hero) or self:GetUnitYaw(hero) or 0
@@ -592,13 +740,8 @@ function DotaKartController:RegisterHero(playerID, hero)
     self:ApplyKartModifier(hero)
     self:SetHeroFacing(hero, st.yaw)
 
-    -- FIX113: não iniciar o motor no lobby/pré-largada. O primeiro UpdateKart
-    -- real inicia a voz e mantém o refresh durante a corrida.
-    if self:IsInvokerCustomKart(hero) then
-        st.custom_engine_loop_started = false
-        st.custom_engine_loop_entindex = -1
-        st.custom_engine_loop_next_refresh = 0
-    end
+    -- Clear the former Invoker-only idle; engine audio now follows every kart.
+    pcall(function() StopSoundOn("dotakart_engine_idle", hero) end)
 
     if self.config.start_with_test_item and (self.heldItems[playerID] == nil or self.heldItems[playerID] == "") then
         self:SetHeldItem(playerID, self.config.test_item_name)
@@ -676,6 +819,22 @@ end
 function DotaKartController:IsKartRooted(playerID, now)
     local st = self:GetState(playerID)
     return (st.rooted_until or 0) > (now or DKNow())
+end
+
+-- Shared by human and public AI movement; expired sources are removed lazily.
+function DotaKartController:GetPugnaSpeedMultiplier(playerID, now, ignoreSlows)
+    local st = self:GetState(playerID)
+    if (st.star_until or 0) > now then ignoreSlows = true end
+    local delta = 0
+    for id, effect in pairs(st.speed_drain_effects or {}) do
+        if now >= effect.expires then st.speed_drain_effects[id] = nil
+        elseif effect.delta > 0 or not ignoreSlows then delta = delta + effect.delta end
+    end
+    local factor = 1 + DKClamp(delta, -.95, 1.5)
+    if not ignoreSlows and (st.nether_ward_slow_until or 0) > now then
+        factor = factor * (1 - (st.nether_ward_slow_pct or .75))
+    end
+    return factor
 end
 
 function DotaKartController:SetKartSlow(playerID, duration, slowPct, recoverPerTick, tickInterval)
@@ -796,11 +955,20 @@ function DotaKartController:OnInputState(eventSourceIndex, keys)
 
     local st = self:GetState(playerID)
     local oldSig = (st.input.forward and "1" or "0") .. (st.input.reverse and "1" or "0") .. (st.input.left and "1" or "0") .. (st.input.right and "1" or "0")
+    st.last_input_received_at = DKNow()
 
     st.input.forward = DKBool(keys.forward)
     st.input.reverse = DKBool(keys.reverse)
     st.input.left = DKBool(keys.left)
     st.input.right = DKBool(keys.right)
+
+    -- A registration flag does not prove that the engine is still scheduling
+    -- the callback. Held-key heartbeats can recover a missing timer, but never
+    -- move the kart themselves or rearm repeatedly during a manual pause.
+    if self.enabled and not GameRules:IsGamePaused()
+        and (not self._thinkStarted or DKNow() - (self._lastThinkTime or 0) > 1.0) then
+        self:StartThink(true, "input_watchdog")
+    end
 
     local newSig = (st.input.forward and "1" or "0") .. (st.input.reverse and "1" or "0") .. (st.input.left and "1" or "0") .. (st.input.right and "1" or "0")
     if self.config.debug and oldSig ~= newSig then
@@ -867,7 +1035,8 @@ function DotaKartController:UseItem(playerID)
     -- FIX17: itens reais ficam no DotaKartItemSystem.
     -- Mantém o controller só como dono do input T e do estado do item na HUD.
     if GameRules.DotaKartItemSystem ~= nil and GameRules.DotaKartItemSystem.UseItem ~= nil then
-        if GameRules.DotaKartItemSystem:UseItem(playerID, itemName) then
+        if GameRules.DotaKartItemSystem:UseItem(playerID, itemName)
+            or (GameRules.DotaKartItemSystem.itemDefs and GameRules.DotaKartItemSystem.itemDefs[itemName]) then
             return
         end
     end
@@ -926,8 +1095,8 @@ end
 
 function DotaKartController:GetCustomKartVisualYawOffset(hero)
     local heroName = self:GetHeroUnitName(hero)
-    if DOTA_KART_CUSTOM_KART_FACING_YAW_OFFSET ~= nil then
-        return tonumber(DOTA_KART_CUSTOM_KART_FACING_YAW_OFFSET[heroName] or 0) or 0
+    if self.kart_visual_yaw ~= nil then
+        return tonumber(self.kart_visual_yaw[heroName] or 0) or 0
     end
     return 0
 end
@@ -935,8 +1104,8 @@ end
 function DotaKartController:GetCustomKartGroundZOffset(hero)
     local heroName = self:GetHeroUnitName(hero)
     local offset = 0
-    if DOTA_KART_CUSTOM_KART_GROUND_Z_OFFSET ~= nil then
-        offset = tonumber(DOTA_KART_CUSTOM_KART_GROUND_Z_OFFSET[heroName] or 0) or 0
+    if self.kart_ground_z ~= nil then
+        offset = tonumber(self.kart_ground_z[heroName] or 0) or 0
     end
     return offset
 end
@@ -957,15 +1126,6 @@ function DotaKartController:SetHeroFacing(hero, yaw)
     yaw = DKNormalizeYaw((yaw or 0) + self:GetCustomKartVisualYawOffset(hero))
     local rad = math.rad(yaw)
     local fwd = Vector(math.cos(rad), math.sin(rad), 0)
-
-    if hero.SetForwardVector ~= nil then
-        hero:SetForwardVector(fwd)
-    end
-
-    if hero.FaceTowards ~= nil then
-        local pos = hero:GetAbsOrigin()
-        hero:FaceTowards(pos + fwd * 256)
-    end
 
     if hero.SetAngles ~= nil then
         hero:SetAngles(0, yaw, 0)
@@ -1036,8 +1196,11 @@ function DotaKartController:IsPositionInsideTrackSkip(pos)
     return false
 end
 
+local RomeTrack = GetMapName ~= nil and GetMapName() == "rome" and require("dotakart/maps/rome") or nil
+
 function DotaKartController:IsPositionInsideTrackLane(pos)
     if pos == nil then return false end
+    if RomeTrack ~= nil then return RomeTrack:IsOnRoad(pos) end
     if self:IsPositionInsideTrackSkip(pos) then return true end
     local hud = self.hud or GameRules.DotaKartHUD
     if hud == nil or hud.ProjectPositionOnTrack == nil or hud.trackSegments == nil or #hud.trackSegments <= 0 then
@@ -1146,6 +1309,7 @@ function DotaKartController:IsGridNavWardBlockPenaltyTile(pos)
 end
 
 function DotaKartController:IsPositionOnPathTile(pos)
+    if RomeTrack ~= nil then return RomeTrack:IsOnRoad(pos) end
     if pos == nil or GridNav == nil or GridNav.IsTraversable == nil then return true end
     local ok, traversable = pcall(function() return GridNav:IsTraversable(pos) end)
     if not ok then return true end
@@ -1153,6 +1317,7 @@ function DotaKartController:IsPositionOnPathTile(pos)
 end
 
 function DotaKartController:IsPositionOnOfficialPath(pos)
+    if RomeTrack ~= nil then return RomeTrack:IsOnRoad(pos) end
     -- FIX97/FIX98: não há API Lua confiável para ler o material/tile set visual (radiant_basic)
     -- nem a layer Block Wards diretamente. Para gameplay usamos dk_track_*/dk_track_skip
     -- e o pathing exposto pelo GridNav.
@@ -1193,6 +1358,12 @@ function DotaKartController:GetOffroadInfo(playerID, hero, pos, now)
     if self.IsKartStarActive ~= nil and self:IsKartStarActive(playerID) then return info end
     -- FIX91: usuário no Shadow Path da Spectral Dagger fica desobstruído para cortar caminho.
     if self:IsSpectralUnobstructed(playerID, now) then return info end
+
+    if RomeTrack ~= nil then
+        info.active = not RomeTrack:IsOnRoad(pos)
+        info.reason = info.active and "rome_off_road_mesh" or "rome_road_mesh"
+        return info
+    end
 
     if self:IsPositionInsideTrackSkip(pos) then return info end
 
@@ -1548,6 +1719,7 @@ function DotaKartController:ApplyKartCollisionPhysics(playerID, hero, st, oldPos
 
     local dir = DKNormalize2DVec(moveDir or (desiredPos - oldPos), Vector(1,0,0))
     local blocked, reason = self:IsWorldCollisionBlocked(desiredPos, hero, oldPos, dir)
+    st.last_world_collision_reason = blocked and reason or ""
     if blocked then
         local push = tonumber(self.config.wall_pushback) or 130
         if reason == "high_ground" then
@@ -1582,6 +1754,8 @@ function DotaKartController:ApplyKartCollisionPhysics(playerID, hero, st, oldPos
                 -- Por curto tempo, essa dupla ignora colisão entre si para o caster não ficar bloqueado.
                 local selfHookPass = st ~= nil and (st.hook_passthrough_until or 0) > now and tonumber(st.hook_passthrough_target or -1) == tonumber(otherID)
                 local otherHookPass = otherSt ~= nil and (otherSt.hook_passthrough_until or 0) > now and tonumber(otherSt.hook_passthrough_target or -1) == tonumber(playerID)
+                local selfStormPass = st ~= nil and (st.storm_hammer_passthrough_until or 0) > now and tonumber(st.storm_hammer_passthrough_target or -1) == tonumber(otherID)
+                local otherStormPass = otherSt ~= nil and (otherSt.storm_hammer_passthrough_until or 0) > now and tonumber(otherSt.storm_hammer_passthrough_target or -1) == tonumber(playerID)
                 -- FIX72: vítimas arremessadas para cima pelo Burrowstrike ficam sem colisão horizontal
                 -- por alguns décimos, permitindo que karts passem por baixo enquanto estão no ar.
                 local selfAirbornePass = st ~= nil and ((st.burrow_airborne_until or 0) > now or (st.tornado_airborne_until or 0) > now)
@@ -1594,7 +1768,7 @@ function DotaKartController:ApplyKartCollisionPhysics(playerID, hero, st, oldPos
                 local otherAstralPass = otherSt ~= nil and ((otherSt.astral_self_until or 0) > now or (otherSt.astral_enemy_until or 0) > now)
                 local selfBallPass = st ~= nil and st.ball_lightning_active == true
                 local otherBallPass = otherSt ~= nil and otherSt.ball_lightning_active == true
-                if selfHookPass or otherHookPass or selfAirbornePass or otherAirbornePass or selfSpectralPass or otherSpectralPass or selfShukuchiPass or otherShukuchiPass or selfAstralPass or otherAstralPass or selfBallPass or otherBallPass then
+                if selfHookPass or otherHookPass or selfStormPass or otherStormPass or selfAirbornePass or otherAirbornePass or selfSpectralPass or otherSpectralPass or selfShukuchiPass or otherShukuchiPass or selfAstralPass or otherAstralPass or selfBallPass or otherBallPass then
                     -- Continua atravessando só esse kart durante pass-through/airborne.
                 else
                 local selfStar = self:IsKartStarActive(playerID)
@@ -1687,9 +1861,26 @@ function DotaKartController:MoveUnitWithKartPhysics(playerID, hero, desiredPos, 
     return finalPos
 end
 
+-- One permutation per race, shared by human racers and the public AI's logical slots.
+function DotaKartController:PrepareStartingGrid(randomize, maxPlayers, restart)
+    if self.startGridSlots ~= nil and not restart then return self.startGridSlots end
+    local count = math.max(1, math.min(8, tonumber(maxPlayers) or 8))
+    local slots = {}
+    for i = 1, count do slots[i] = i end
+    if randomize ~= false then
+        for i = count, 2, -1 do
+            local j = RandomInt ~= nil and RandomInt(1, i) or math.random(1, i)
+            slots[i], slots[j] = slots[j], slots[i]
+        end
+    end
+    self.startGridSlots = {}
+    for i = 1, count do self.startGridSlots[i - 1] = slots[i] end
+    return self.startGridSlots
+end
+
 function DotaKartController:GetPlayerStartEntity(playerID)
-    -- PlayerID 0 usa player1_start_position, PlayerID 7 usa player8_start_position.
-    local slot = (tonumber(playerID) or 0) + 1
+    local id = tonumber(playerID) or 0
+    local slot = (self.startGridSlots and self.startGridSlots[id]) or (id + 1)
     local names = {
         "player" .. tostring(slot) .. "_start_position",
         "player_" .. tostring(slot) .. "_start_position"
@@ -1792,7 +1983,8 @@ function DotaKartController:GetStartPositionAndYaw(playerID, hero)
         yaw = DKNormalizeYaw(math.deg(DKAtan2(p2.y - start.y, p2.x - start.x)))
     end
 
-    local offset = (tonumber(playerID) or 0) * 96
+    local id = tonumber(playerID) or 0
+    local offset = ((self.startGridSlots and self.startGridSlots[id]) or (id + 1)) * 96 - 96
     local pos = Vector(start.x + offset, start.y, GetGroundHeight(start, hero) + (self.config.ground_z_offset or 20))
     yaw = self:GetYawTowardFinishLineFrom(pos) or yaw
     return pos, yaw, "dk_track_001_fallback"
@@ -1804,16 +1996,27 @@ function DotaKartController:TeleportAllToTrackStart()
         return
     end
 
+    local ai = GameRules and GameRules.DotaKartPublicAI
+    local botSlots, placed = {}, {}
+    for slot, bot in pairs((ai and ai.bots) or {}) do
+        if DKValidUnit(bot.unit) then botSlots[bot.unit] = slot end
+    end
     for playerID = 0, DOTA_MAX_TEAM_PLAYERS - 1 do
         local hero = self:GetHeroForPlayer(playerID)
-        if DKValidUnit(hero) then
+        -- Fake-client IDs can alias a public bot's logical racing slot.
+        if DKValidUnit(hero) and not placed[hero] and (botSlots[hero] == nil or botSlots[hero] == playerID) then
             local pos, yaw, sourceName = self:GetStartPositionAndYaw(playerID, hero)
             if pos ~= nil then
                 FindClearSpaceForUnit(hero, pos, true)
+                placed[hero] = true
+                if ai ~= nil and ai.OnKartTeleported ~= nil then
+                    ai:OnKartTeleported(playerID, hero, hero:GetAbsOrigin())
+                end
 
                 local st = self:GetState(playerID)
                 st.speed = 0
                 st.yaw = yaw or st.yaw or 0
+                DotaKartHandling:Reset(st, st.yaw)
                 self:SetHeroFacing(hero, st.yaw)
 
                 if self.config.debug then
@@ -1828,6 +2031,7 @@ end
 
 function DotaKartController:HardStopAll()
     for playerID, st in pairs(self.states) do
+        self:StopKartEngineSound(st)
         st.speed = 0
         st.input.forward = false
         st.input.reverse = false
@@ -1926,6 +2130,8 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         st.storm_hammer_transport_until = 0
     end
 
+    if (st.crystal_slide_until or 0) > now then return end
+
     -- FIX26: stun de corrida desacelera e gira; item fica bloqueado no UseItem.
     if (st.stunned_until or 0) > now then
         self:UpdateStunnedKart(playerID, hero, st, dt, now)
@@ -1941,9 +2147,6 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         st.speed = 0
         return
     end
-
-    -- FIX112: garante o idle 3D do Invoker Kart mesmo após respawn/re-registro.
-    self:EnsureCustomKartEngineLoop(playerID, hero, st)
 
     -- FIX72: root de corrida impede movimento, mas não bloqueia todos os itens.
     if (st.rooted_until or 0) > now then
@@ -2031,6 +2234,11 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
     -- FIX129: Plague Ward and The Swarm use independent exact-value channels so
     -- repeated hits/ticks cannot accidentally accumulate through the generic slow state.
     if not ignoreSlowEffects then
+        if (tonumber(st.spectral_path_slow_until) or 0) > now then
+            local spectralSlow = DKClamp(tonumber(st.spectral_path_slow_pct) or 0.10, 0, 0.95)
+            maxSpeed = math.max(90, maxSpeed * (1.0 - spectralSlow))
+            reverseMax = math.max(80, reverseMax * (1.0 - spectralSlow * 0.55))
+        end
         if (tonumber(st.plague_ward_slow_until) or 0) > now then
             local wardSlow = DKClamp(tonumber(st.plague_ward_slow_pct) or 0.15, 0, 0.95)
             maxSpeed = math.max(90, maxSpeed * (1.0 - wardSlow))
@@ -2050,6 +2258,11 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
             end
         end
     end
+
+    local pugnaFactor = self:GetPugnaSpeedMultiplier(playerID, now, ignoreSlowEffects)
+    maxSpeed = math.max(45, maxSpeed * pugnaFactor)
+    reverseMax = math.max(40, reverseMax * pugnaFactor)
+    if pugnaFactor < 1 and st.speed > maxSpeed then st.speed = maxSpeed end
 
     -- FIX34: slow de corrida (Venomous Gale). O slow começa forte e recupera aos poucos.
     local slowPct = 0
@@ -2116,22 +2329,14 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         st.yaw = DKNormalizeYaw(st.yaw + wobble * strength * dt)
     end
 
+    -- Body yaw follows steering; velocity retains momentum outside the curve.
+    local motionYaw, handledSpeed = DotaKartHandling:Update(self.config, st, st.yaw, st.speed, steer, dt)
+    st.speed = handledSpeed
     local rad = math.rad(st.yaw)
     local forward = Vector(math.cos(rad), math.sin(rad), 0)
-    local moveDir = forward
-    local nextPos = pos + forward * (st.speed * dt)
-
-    -- FIX30: derrapagem em alta velocidade. Ao virar rápido, o kart desliza para fora da curva.
-    if self.config.drift_enabled and steer ~= 0 and (st.speed or 0) > (tonumber(self.config.drift_min_speed) or 560) then
-        local driftMin = tonumber(self.config.drift_min_speed) or 560
-        local denom = math.max(1, (self.config.max_speed or 880) - driftMin)
-        local driftPower = DKClamp(((st.speed or 0) - driftMin) / denom, 0, 1)
-        local right = Vector(forward.y, -forward.x, 0)
-        local lateral = right * (steer * (st.speed or 0) * (tonumber(self.config.drift_lateral_factor) or 0.34) * driftPower * dt)
-        nextPos = nextPos + lateral
-        moveDir = DKNormalize2DVec((nextPos - pos), forward)
-        st.speed = st.speed * (tonumber(self.config.drift_speed_loss_factor) or 0.985)
-    end
+    local motionRad = math.rad(motionYaw)
+    local moveDir = Vector(math.cos(motionRad), math.sin(motionRad), 0)
+    local nextPos = pos + moveDir * (st.speed * dt)
 
     if offroad ~= nil and offroad.active == true and math.abs(st.speed or 0) >= (tonumber(self.config.offroad_min_speed_for_instability) or 180) then
         local power = DKClamp(math.abs(st.speed or 0) / math.max(1, self.config.max_speed or 880), 0.20, 1.0)
@@ -2159,8 +2364,9 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
 
     -- FIX15: não chamar hero:Stop() em loop. Isso cortava animações e parecia spam de ordem.
 
-    if now - (st.last_resolve_time or 0) >= self.config.resolve_collision_interval then
-        ResolveNPCPositions(nextPos, 96)
+    if (st.storm_hammer_passthrough_until or 0) <= now
+        and now - (st.last_resolve_time or 0) >= self.config.resolve_collision_interval then
+        -- Kart separation is already resolved by ApplyKartCollisionPhysics.
         st.last_resolve_time = now
     end
 
@@ -2175,6 +2381,8 @@ function DotaKartController:OnThink()
     local now = DKNow()
     local dt = now - (self._lastThinkTime or now)
     self._lastThinkTime = now
+    self._thinkTicks = (self._thinkTicks or 0) + 1
+    self._thinkStage = "movement"
     dt = DKClamp(dt, 0.001, 0.10)
 
     if self.enabled then
@@ -2186,6 +2394,7 @@ function DotaKartController:OnThink()
                 local hero = self:GetHeroForPlayer(playerID)
                 if DKValidUnit(hero) then
                     local st = self:GetState(playerID)
+                    self._thinkStage = "movement p" .. tostring(playerID)
 
                     -- FIX68: se este PlayerResource pertence a IA publica integrada,
                     -- nao aplica o movimento manual do controller por cima da IA.
@@ -2227,6 +2436,53 @@ function DotaKartController:OnThink()
         end
     end
 
+    -- A bot's fake-client ID may alias its logical racing slot. Each NPC
+    -- must own one animated prop and one engine voice, using its driving state.
+    local visualOwners = {}
+    local publicAI = GameRules and GameRules.DotaKartPublicAI
+    for _, bot in pairs(publicAI and publicAI.bots or {}) do
+        if DKValidUnit(bot.unit) then visualOwners[bot.unit] = bot.player_id end
+    end
+    for id, racer in pairs(self.hud and self.hud.racers or {}) do
+        if DKValidUnit(racer.unit) and visualOwners[racer.unit] == nil then visualOwners[racer.unit] = id end
+    end
+    for id in pairs(self.states or {}) do
+        local hero = self:GetHeroForPlayer(id)
+        if DKValidUnit(hero) and visualOwners[hero] == nil then visualOwners[hero] = id end
+    end
+    -- Clean aliases first so their cleanup cannot undo the carrier afterward.
+    for id, state in pairs(self.states or {}) do
+        local hero = self:GetHeroForPlayer(id)
+        if DKValidUnit(hero) and visualOwners[hero] ~= id then
+            self:StopKartEngineSound(state)
+            if DotaKartVisual then DotaKartVisual:Remove(state) end
+        end
+    end
+
+    -- Audio is separate from movement so public AI gets sound without a second
+    -- physics update. This also cleans up voices on death, finish and race stop.
+    for playerID, st in pairs(self.states or {}) do
+        local hero = self:GetHeroForPlayer(playerID)
+        if not DKValidUnit(hero) or visualOwners[hero] == playerID then
+            self._thinkStage = "audio p" .. tostring(playerID)
+            self:UpdateKartEngineSound(playerID, self:GetHeroForPlayer(playerID), st, now)
+            DotaKartHandling:UpdateSound(self, playerID, self:GetHeroForPlayer(playerID), st, now)
+            if DotaKartAnimation ~= nil then
+                self._thinkStage = "animation p" .. tostring(playerID)
+                -- Rendering errors must not cancel the controller's recurring think
+                -- and leave the human racer immobile while AI keeps moving.
+                local ok, err = pcall(function()
+                    DotaKartAnimation:Update(self, playerID, self:GetHeroForPlayer(playerID), st, dt, now)
+                end)
+                if not ok and now >= (st.kart_animation_error_report_at or 0) then
+                    st.kart_animation_error_report_at = now + 5
+                    print("[DotaKartAnimation] player=" .. tostring(playerID) .. " " .. tostring(err))
+                end
+            end
+        end
+    end
+
+    self._thinkStage = "idle"
     return self.config.tick_rate
 end
 

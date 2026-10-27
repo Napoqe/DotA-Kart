@@ -1,0 +1,76 @@
+{
+  "hero": "brewmaster",
+  "clips": [
+    "kart_idle",
+    "kart_idle_left",
+    "kart_idle_right",
+    "kart_drive",
+    "kart_drive_left",
+    "kart_drive_right",
+    "kart_reverse",
+    "kart_reverse_left",
+    "kart_reverse_right"
+  ],
+  "materials": [
+    {
+      "source_material": "brewmaster_armor_belt_Valve",
+      "vmat": "materials/karts/brewmaster/brewmaster_armor_belt_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\brewmaster\\brewmaster_armor_belt_valve_color.tga"
+    },
+    {
+      "source_material": "brewmaster_armor_skirt_backfaces_Valve",
+      "vmat": "materials/karts/brewmaster/brewmaster_armor_skirt_backfaces_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\brewmaster\\brewmaster_armor_skirt_backfaces_valve_color.tga"
+    },
+    {
+      "source_material": "brewmaster_back_Valve",
+      "vmat": "materials/karts/brewmaster/brewmaster_back_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\brewmaster\\brewmaster_back_valve_color.tga"
+    },
+    {
+      "source_material": "brewmaster_armor_Valve",
+      "vmat": "materials/karts/brewmaster/brewmaster_armor_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\brewmaster\\brewmaster_armor_valve_color.tga"
+    },
+    {
+      "source_material": "brewmaster_armor_shoulders_backfaces_Valve",
+      "vmat": "materials/karts/brewmaster/brewmaster_armor_shoulders_backfaces_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\brewmaster\\brewmaster_armor_shoulders_backfaces_valve_color.tga"
+    },
+    {
+      "source_material": "brewmaster_bracers_Valve",
+      "vmat": "materials/karts/brewmaster/brewmaster_bracers_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\brewmaster\\brewmaster_bracers_valve_color.tga"
+    },
+    {
+      "source_material": "Material",
+      "vmat": "materials/karts/brewmaster/material.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\brewmaster\\material_color.png"
+    },
+    {
+      "source_material": "brewmaster_armor_belt_backfaces_Valve",
+      "vmat": "materials/karts/brewmaster/brewmaster_armor_belt_backfaces_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\brewmaster\\brewmaster_armor_belt_backfaces_valve_color.tga"
+    },
+    {
+      "source_material": "brewmaster_armor_shoulders_Valve",
+      "vmat": "materials/karts/brewmaster/brewmaster_armor_shoulders_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\brewmaster\\brewmaster_armor_shoulders_valve_color.tga"
+    },
+    {
+      "source_material": "brewmaster_base_Valve",
+      "vmat": "materials/karts/brewmaster/brewmaster_base_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\brewmaster\\brewmaster_base_valve_color.tga"
+    },
+    {
+      "source_material": "Wheel_cut_interior",
+      "vmat": "materials/karts/brewmaster/wheel_cut_interior.vmat",
+      "texture": null
+    },
+    {
+      "source_material": "brewmaster_armor_skirt_Valve",
+      "vmat": "materials/karts/brewmaster/brewmaster_armor_skirt_valve.vmat",
+      "texture": "C:\\Steam\\steamapps\\common\\dota 2 beta\\content\\dota_addons\\dota_kart\\materials\\karts\\brewmaster\\brewmaster_armor_skirt_valve_color.tga"
+    }
+  ]
+}
