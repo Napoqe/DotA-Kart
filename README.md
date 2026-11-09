@@ -21,9 +21,6 @@ Custom Game de Dota 2 no estilo Mario Kart 64, criado por **Napoqe** (Rafael). E
 - `content/models`, `content/materials`, `content/sounds`, `content/soundevents` — fontes dos assets.
 - `game/models`, `game/materials`, `game/sounds`, `game/soundevents`, `game/panorama` — assets compilados.
 
-Não incluídos no backup / Not included: pastas `model_work` (scripts e arquivos de trabalho), arquivos `.blend`,
-arquivos de instruções para assistentes de IA (`CLAUDE.md`, `AGENTS.md`) e arquivos `.zip` locais.
-
 ## Como instalar / How to install
 1. Instale o **Dota 2 Workshop Tools** (Steam → Dota 2 → Propriedades → DLC).
    *Install Dota 2 Workshop Tools (Steam → Dota 2 → Properties → DLC).*
@@ -43,12 +40,6 @@ arquivos de instruções para assistentes de IA (`CLAUDE.md`, `AGENTS.md`) e arq
 - **T** — usar item para frente; **S + T** usa para trás (*use item forward; S + T uses it backward*)
 - **Q** — Astral Imprisonment em si mesmo (*self-cast Astral Imprisonment*)
 - **R** — segurar para câmera traseira (*hold for rear view*)
-
-## Backup
-`backup_sync_from_dota.bat` copia o addon da instalação do Dota 2 para este repositório
-(sem `model_work`, `.blend` e `.zip`) e tira do Git os arquivos que não fazem parte do backup.
-Depois faça o commit e o push pelo GitHub Desktop.
-*`backup_sync_from_dota.bat` copies the addon from the Dota 2 install into this repository; then commit and push with GitHub Desktop.*
 
 ## Licença / License
 Resumo (texto completo em [LICENSE](LICENSE)):
