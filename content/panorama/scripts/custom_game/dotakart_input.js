@@ -38,6 +38,8 @@
         left: "dotakart16_" + RUN_ID + "_left",
         right: "dotakart16_" + RUN_ID + "_right",
         item: "dotakart16_" + RUN_ID + "_item",
+        // FIX141: per-load name like T. A fixed name stayed bound to the previous HUD load.
+        self_item: "dotakart16_" + RUN_ID + "_self_item",
         force_forward: "dotakart16_" + RUN_ID + "_force_forward",
         release: "dotakart16_" + RUN_ID + "_release_all"
     };
@@ -246,9 +248,7 @@
 
         // FIX123: Q is a one-shot action. A plain command is more reliable than +/-
         // for Dota's normal ability hotkey while the legacy +/- commands stay as fallback.
-        AddCommand("dotakart_self_item", function () { UseSelfItem(); });
-        AddCommand("+dotakart_self_item", function () { UseSelfItem(); });
-        AddCommand("-dotakart_self_item", function () { });
+        AddCommand(CMD.self_item, function () { UseSelfItem(); });
 
         AddCommand("+" + CMD.force_forward, function () { SetKey("force_forward", true); });
         AddCommand("-" + CMD.force_forward, function () { SetKey("force_forward", false); });
@@ -262,7 +262,15 @@
     function RegisterAddonDrivingCommands() {
         var config = GameUI.CustomUIConfig();
         if (config.dotaKartDrivingInput) config.dotaKartDrivingInput.release();
-        config.dotaKartDrivingInput = { run: RUN_ID, setKey: SetKey, release: ReleaseAll, diagnose: DiagnoseInput };
+        config.dotaKartDrivingInput = { run: RUN_ID, setKey: SetKey, release: ReleaseAll, diagnose: DiagnoseInput, selfItem: UseSelfItem };
+        // FIX141: stable manual-bind name forwards to the CURRENT HUD load.
+        if (!config.dotaKartSelfItemRegistered) {
+            AddCommand("dotakart_self_item", function () {
+                var current = GameUI.CustomUIConfig().dotaKartDrivingInput;
+                if (current && current.selfItem) current.selfItem();
+            });
+            config.dotaKartSelfItemRegistered = true;
+        }
 
         function RegisterDirection(direction) {
             function Dispatch(down) {
@@ -318,7 +326,7 @@
         BindKey("a", "+" + CMD.left);
         BindKey("d", "+" + CMD.right);
         BindKey("t", "+" + CMD.item);
-        BindKey("q", "dotakart_self_item");
+        BindKey("q", CMD.self_item);
         BindKey("r", "+" + CMD.force_forward);
 
         BindKey("W", "+" + CMD.forward);
@@ -326,7 +334,7 @@
         BindKey("A", "+" + CMD.left);
         BindKey("D", "+" + CMD.right);
         BindKey("T", "+" + CMD.item);
-        BindKey("Q", "dotakart_self_item");
+        BindKey("Q", CMD.self_item);
         BindKey("R", "+" + CMD.force_forward);
     }
 
@@ -337,7 +345,7 @@
         Msg("bind a +" + CMD.left);
         Msg("bind d +" + CMD.right);
         Msg("bind t +" + CMD.item);
-        Msg("bind q dotakart_self_item  // Astral Imprisonment self-cast");
+        Msg("bind q " + CMD.self_item + "  // Astral Imprisonment self-cast");
         Msg("bind r +" + CMD.force_forward + "  // segure R: Rear View; R+T: Spectral Dagger force-forward/atalho");
     }
 

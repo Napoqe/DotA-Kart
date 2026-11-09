@@ -444,3 +444,12 @@
 {
     brightness: 0.55;
 }
+
+/* Advanced bot controls stay within the setup panel on a 1080p canvas. */
+.DKSetupBody { max-height: 760px; overflow: squish scroll; }
+.DKSetupAdvancedBots { width: 100%; flow-children: down; visibility: collapse; }
+.DKSetupAdvancedOpen .DKSetupAdvancedBots { visibility: visible; }
+.DKSetupAdvancedBots .DKSetupSectionTitle { margin-top: 10px; }
+.DKSetupAdjustRow { width: 100%; flow-children: right; margin-top: 6px; }
+.DKSetupAdjustValue { width: 144px; text-align: center; vertical-align: center; color: white; font-size: 21px; }
+.DKSetupPoolValue { width: 210px; height: 36px; text-align: center; vertical-align: center; color: white; font-size: 16px; text-overflow: shrink; }

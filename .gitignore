@@ -1,3 +1,26 @@
+# Editor caches and Python bytecode
 **/__pycache__/
-**/tools_thumbnail_cache.sqlite3
+**/tools_thumbnail_cache.sqlite3*
 **/tools_asset_info.bin
+
+# Work folders and source files that are not part of the backup
+**/model_work/
+*.blend
+*.blend1
+
+# AI assistant instruction files (Codex / Claude)
+CLAUDE.md
+**/CLAUDE.md
+AGENTS.md
+**/AGENTS.md
+.codex/
+.claude/
+
+# Local archives made from the addon folders
+content/content.zip
+game/game.zip
+content/maps and panorama.zip
+
+# Sync log
+backup_sync.log
+backup_sync_status.txt

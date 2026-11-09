@@ -1,0 +1,22 @@
+
+.DKMusicHost { width: 360px; height: fit-children; horizontal-align: right; vertical-align: top; margin-top: 165px; margin-right: 30px; flow-children: down; }
+.DKSetupRoot .DKMusicHost { vertical-align: bottom; margin-top: 0px; margin-bottom: 24px; margin-right: 40px; }
+.DKMusicControls { width: 100%; flow-children: down; background-color: #121b26ed; padding: 8px; border: 1px solid #a9bcd566; }
+.DKMusicButton { height: 29px; width: 100%; padding: 3px 8px; background-color: #293c50ee; margin-top: 3px; border: 1px solid #7391ad88; }
+.DKMusicButton Label { color: #eaf2ff; font-size: 16px; vertical-align: center; horizontal-align: center; }
+.DKMusicButton:hover { brightness: 1.7; }
+.DKMusicButton:disabled { opacity: .4; }
+.DKMusicSelected { background-color: #49613fee; border-color: #c5d9a3; }
+.DKMusicHeading { color: #e3bd72; font-size: 17px; margin-bottom: 4px; }
+.DKMusicTrack { color: #b9c9dd; font-size: 14px; margin-top: 5px; text-overflow: shrink; }
+.DKMusicMini { visibility: collapse; }
+.DKMusicHost.DKMusicRacing { width: 34px; }
+.DKMusicRacing .DKMusicMini { visibility: visible; width: 34px; height: 28px; horizontal-align: right; margin-top: 0px; padding: 0px; background-color: #14213088; border: 1px solid #73869b66; }
+.DKMusicRacing .DKMusicMini Label { font-size: 20px; }
+.DKMusicRacing .DKMusicControls { visibility: collapse; }
+.DKMusicHost.DKMusicRacing.DKMusicExpanded { width: 210px; }
+.DKMusicRacing.DKMusicExpanded .DKMusicControls { visibility: visible; margin-top: 5px; }
+.DKMusicPrompt { width: 100%; flow-children: down; margin-top: 8px; padding: 12px; background-color: #101a29fa; border: 2px solid #c69b50; }
+.DKMusicTitle { color: #f1cb87; font-size: 21px; font-weight: bold; }
+.DKMusicPromptText { width: 100%; color: #e5edfa; font-size: 17px; margin-top: 6px; white-space: normal; }
+.DKMusicChoices { width: 100%; flow-children: down; margin-top: 10px; }

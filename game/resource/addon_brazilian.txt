@@ -3,6 +3,33 @@
     "Language" "brazilian"
     "Tokens"
     {
+        "DOTA_KART_MUSIC_MENU" "TRILHA SONORA"
+        "DOTA_KART_MUSIC_NEXT" "Próxima música"
+        "DOTA_KART_MUSIC_SOURCE_FIRST_RUN" "Escolha a trilha sonora. DotA Kart substitui as músicas do Dota 2; Sem música silencia as duas. A escolha fica salva localmente."
+
+
+
+
+
+        "DOTA_KART_MUSIC_ON" "Música: LIGADA"
+        "DOTA_KART_MUSIC_OFF" "Música: DESLIGADA"
+        "DOTA_KART_MUSIC_LOADING" "Música: carregando..."
+        "DOTA_KART_MUSIC_WELCOME" "BEM-VINDO AO DOTA KART"
+        "DOTA_KART_MUSIC_FIRST_RUN" "Quer manter a trilha original de corrida retrô? Você pode desligar para gravar a qualquer momento. A escolha fica salva neste computador."
+        "DOTA_KART_MUSIC_KEEP" "MANTER MÚSICA"
+        "DOTA_KART_MUSIC_DISABLE" "SEM MÚSICA"
+
+        "DOTA_KART_SETUP_ADVANCED_BOTS" "CONFIGURAÇÕES AVANÇADAS DOS BOTS"
+        "DOTA_KART_SETUP_BOT_SPEED" "VELOCIDADE DOS KARTS"
+        "DOTA_KART_SETUP_BOT_SPEED_HINT" "80%-140% da velocidade normal dos karts."
+        "DOTA_KART_SETUP_BOT_POOL" "POOL DE ITENS DOS BOTS"
+        "DOTA_KART_SETUP_BOT_POOL_0" "Desvantagem"
+        "DOTA_KART_SETUP_BOT_POOL_1" "Pouca desvantagem"
+        "DOTA_KART_SETUP_BOT_POOL_2" "Normal"
+        "DOTA_KART_SETUP_BOT_POOL_3" "Vantagem"
+        "DOTA_KART_SETUP_BOT_POOL_4" "Muita vantagem"
+        "DOTA_KART_SETUP_BOT_POOL_HINT" "Altera as chances dos itens só para bots; normal usa a posição na corrida."
+
         "DOTA_KART_SETUP_STARTING_GRID" "GRID DE LARGADA"
         "DOTA_KART_SETUP_RANDOM_STARTS_ON" "Posições aleatórias: SIM"
         "DOTA_KART_SETUP_RANDOM_STARTS_OFF" "Posições aleatórias: NÃO"

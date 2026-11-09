@@ -161,13 +161,14 @@ function DotaKartController:Init(hud)
 
         -- Ajustes principais de controle.
         -- FIX30: velocidade normal maior, sem depender de item.
-        max_speed = 880,
-        boost_max_speed = 1250,
-        reverse_max_speed = 300,
-        acceleration = 820,
-        brake_acceleration = 1450,
-        reverse_acceleration = 560,
-        friction = 540,
+        -- FIX130: +75% kart speed (was 880/1250/300, accel 820/1450/560, friction 540, boost +460).
+        max_speed = 1540,
+        boost_max_speed = 2188,
+        reverse_max_speed = 525,
+        acceleration = 770, -- FIX132: 0 -> max speed in ~2s (was 1435)
+        brake_acceleration = 2538,
+        reverse_acceleration = 980,
+        friction = 945,
         engine_sound_enabled = true,
         engine_sound_clip_duration = 1.8,
         turn_rate = 150,
@@ -185,11 +186,11 @@ function DotaKartController:Init(hud)
         start_with_test_item = false, -- FIX17: itens agora vêm das caixas
         test_item_name = "item_phase_boots",
         boost_duration = 1.20,
-        boost_add_speed = 460,
+        boost_add_speed = 805,
 
         -- FIX26: stun de corrida. Em vez de só modifier_stunned do Dota,
         -- o kart desacelera até parar e gira visualmente estilo Mario Kart.
-        stun_deceleration = 2600,
+        stun_deceleration = 4550, -- FIX130: x1.75 (was 2600)
         stun_spin_rate = 980,
 
         -- 1 = steering normal. -1 inverte A/D se seu modelo/pista precisar.
@@ -224,22 +225,23 @@ function DotaKartController:Init(hud)
 
         -- FIX30: drift/derrapagem visual ao virar em alta velocidade.
         drift_enabled = true,
-        drift_min_speed = 360,
+        drift_min_speed = 630, -- FIX130: x1.75 (was 360)
         drift_hold_time = 0.12,
-        drift_max_angle = 28,
-        drift_grip = 3.4,
+        drift_max_angle = 42, -- FIX132: +50% drift (was 28)
+        drift_grip = 2.3, -- FIX132: +50% drift (was 3.4, lower = more slide)
+        drift_base_angle = 15, -- FIX132: slide outside full drift (was hardcoded 10)
         drift_speed_loss_per_second = 0.08,
 
         -- FIX89: penalidade off-road. Fora da faixa da pista/dk_track_* ou em tile sem Path,
         -- o kart perde velocidade e fica instável. Star/BKB ignora a penalidade.
         offroad_enabled = true,
-        offroad_speed_factor = 0.66,
-        offroad_reverse_speed_factor = 0.78,
+        offroad_speed_factor = 0.38, -- FIX135: same absolute off-road max speed as before +75% (was 0.66: 880*0.66 ~= 1540*0.38)
+        offroad_reverse_speed_factor = 0.45, -- FIX135: same absolute reverse off-road speed (was 0.78: 300*0.78 ~= 525*0.45)
         offroad_accel_factor = 0.70,
-        offroad_extra_friction = 620,
+        offroad_extra_friction = 1085, -- FIX130: x1.75 (was 620)
         offroad_instability_yaw = 52,
         offroad_lateral_drift = 95,
-        offroad_min_speed_for_instability = 180,
+        offroad_min_speed_for_instability = 315, -- FIX130: x1.75 (was 180)
         offroad_gridnav_required = true,
         -- FIX97: usa o pathing/GridNav do tile/mapa como referência principal de pista.
         -- VScript não expõe diretamente o nome do material/tile set (ex: radiant_basic),
@@ -1197,6 +1199,8 @@ function DotaKartController:IsPositionInsideTrackSkip(pos)
 end
 
 local RomeTrack = GetMapName ~= nil and GetMapName() == "rome" and require("dotakart/maps/rome") or nil
+-- FIX136: map dust (pyramid walls, skip wall, decor, slow sand).
+local DustTrack = GetMapName ~= nil and GetMapName() == "dust" and require("dotakart/maps/dust") or nil
 
 function DotaKartController:IsPositionInsideTrackLane(pos)
     if pos == nil then return false end
@@ -1585,6 +1589,10 @@ function DotaKartController:IsWorldCollisionBlocked(pos, hero, oldPos, moveDir)
             reason = minesKind or "mines_prop"
         end
     end
+    if not blocked and DustTrack ~= nil then
+        local dustBlocked, dustReason = DustTrack:IsBlocked(pos, radius)
+        if dustBlocked then blocked = true; reason = dustReason or "dust_wall" end
+    end
     if blocked then return true, reason end
 
     -- dk_track_skip continua liberando highground/atalho oficial, mas NÃO atravessa
@@ -1788,7 +1796,8 @@ function DotaKartController:ApplyKartCollisionPhysics(playerID, hero, st, oldPos
                     end
                     if otherSt ~= nil then
                         otherSt.speed = -math.max(math.abs(otherSt.speed or 0), 420)
-                        otherSt.yaw = DKNormalizeYaw(math.deg(DKAtan2(-normal.y, -normal.x)))
+                        -- FIX135: keep the victim's driving yaw; overwriting it with the push direction
+                        -- left the kart facing the wrong/opposite way when the stun spin ended.
                     end
                     self:SetKartStunned(otherID, cfg.stun)
                 elseif otherStar and not selfStar then
@@ -1837,9 +1846,40 @@ function DotaKartController:ApplyKartCollisionPhysics(playerID, hero, st, oldPos
     return result
 end
 
+-- FIX138: Pounce leash. Clamps a position to the leash circle; on expiry it cancels an
+-- ongoing position-changing lock (knockback/pull) as the Dota leash does.
+function DotaKartController:ClampToLeash(st, pos, hero)
+    if st == nil or pos == nil or st.leash_center == nil then return pos end
+    if (tonumber(st.leash_until) or 0) <= DKNow() then return pos end
+    local c = st.leash_center
+    local dx, dy = pos.x - c.x, pos.y - c.y
+    local d = math.sqrt(dx * dx + dy * dy)
+    local r = tonumber(st.leash_radius) or 400
+    if d <= r or d < 0.001 then return pos end
+    local q = Vector(c.x + dx * r / d, c.y + dy * r / d, pos.z)
+    q.z = GetGroundHeight(q, hero)
+    return q
+end
+
+function DotaKartController:EnforceKartLeash(playerID, hero, st, now)
+    if st == nil or st.leash_center == nil then return end
+    if (tonumber(st.leash_until) or 0) > now then
+        local p = hero:GetAbsOrigin()
+        local q = self:ClampToLeash(st, p, hero)
+        if q ~= p then
+            hero:SetAbsOrigin(q)
+            st.speed = (st.speed or 0) * 0.5
+        end
+    else
+        if (st.locked_until or 0) > now then st.locked_until = now end
+        st.leash_center = nil
+    end
+end
+
 function DotaKartController:MoveUnitWithKartPhysics(playerID, hero, desiredPos, moveDir, speed, dt)
     if not DKValidUnit(hero) or desiredPos == nil then return desiredPos end
     local st = self:GetState(playerID)
+    desiredPos = self:ClampToLeash(st, desiredPos, hero)
     if speed ~= nil then
         st.speed = tonumber(speed) or st.speed or 0
     elseif st.speed == nil then
@@ -2105,6 +2145,20 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         st.yaw = self:GetTrackYawForHero(hero) or self:GetUnitYaw(hero) or 0
     end
 
+    -- FIX138: Pounce leash keeps the victim inside the leash circle.
+    self:EnforceKartLeash(playerID, hero, st, now)
+
+    -- FIX138: Pounce owns the kart position during the leap, but facing is not locked.
+    if (tonumber(st.pounce_motion_until) or 0) > now and not ((st.stunned_until or 0) > now) then
+        local pInput = st.input or {}
+        local pSteer = 0
+        if pInput.left then pSteer = pSteer + 1 end
+        if pInput.right then pSteer = pSteer - 1 end
+        st.yaw = DKNormalizeYaw((st.yaw or 0) + pSteer * (self.config.turn_rate or 150) * (self.config.steering_sign or 1) * dt)
+        self:SetHeroFacing(hero, st.yaw)
+        return
+    end
+
     -- FIX123: anti-skip Glimpse owns the kart transform until it reaches the exact
     -- last legal dk_track_* checkpoint. Inputs/physics cannot move it meanwhile.
     if st.anti_skip_glimpse_active == true then
@@ -2228,6 +2282,14 @@ function DotaKartController:UpdateKart(playerID, hero, st, dt, now)
         if self.config.offroad_debug and now - (st.last_offroad_debug or 0) > 1.0 then
             st.last_offroad_debug = now
             print("[DotaKartController] off-road p" .. tostring(playerID) .. " reason=" .. tostring(offroad.reason) .. " max=" .. tostring(math.floor(maxSpeed)))
+        end
+    end
+
+    -- FIX136: loose sand patches on the dust map slow the kart (Star/BKB and mobility items ignore it).
+    if (not ignoreSlowEffects) and DustTrack ~= nil and not self:IsKartStarActive(playerID) and DustTrack:IsInSand(pos) then
+        maxSpeed = math.max(160, maxSpeed * DustTrack:GetSandSpeedFactor())
+        if (st.speed or 0) > maxSpeed then
+            st.speed = DKApproach(st.speed or 0, maxSpeed, (self.config.offroad_extra_friction or 620) * dt)
         end
     end
 

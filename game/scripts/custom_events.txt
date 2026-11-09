@@ -1,0 +1,13 @@
+"DotAKartLocalEvents"
+{
+    "dotakart_local_music_preference"
+    {
+        "player_id" "short"
+        "enabled" "short"
+    }
+    "dotakart_local_music_mode"
+    {
+        "player_id" "short"
+        "mode" "short"
+    }
+}

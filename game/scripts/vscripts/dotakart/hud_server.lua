@@ -326,6 +326,17 @@ function DotaKartHUD:BuildTrackPathFromEntities(prefix, maxPoints, closed, paddi
         return false
     end
 
+    -- FIX143: Rome has 470 dk_track_* points 250 apart; use every second one (500 apart).
+    local romeTrack = GetMapName ~= nil and GetMapName() == "rome" and require("dotakart/maps/rome") or nil
+    local stride = romeTrack ~= nil and romeTrack:GetTrackStride() or 1
+    if stride > 1 then
+        local thinPoints, thinNames = {}, {}
+        for i = 1, #worldPoints, stride do
+            table.insert(thinPoints, worldPoints[i]); table.insert(thinNames, foundNames[i])
+        end
+        worldPoints, foundNames = thinPoints, thinNames
+    end
+
     self:SetTrackPathFromWorldPoints(worldPoints, closed, padding)
 
     print("[DotaKartHUD] Track path criado com " .. tostring(#worldPoints) .. " pontos. Comprimento: " .. tostring(math.floor(self.trackLength or 0)))
@@ -548,7 +559,6 @@ function DotaKartHUD:HandleFinishGateCrossing(racer, now, pos, lastDistance, dis
     end
     if not inside and not swept then return false end
 
-    racer.finish_gate_inside = distGate <= exitRadius
     -- Check physical direction as well as spline wrap, including boosted passes.
     if previousPos ~= nil and not self:IsForwardFinishWrap(lastDistance, distance, len) then
         local gateProject = self:ProjectPositionOnTrack(gatePos)
@@ -556,11 +566,15 @@ function DotaKartHUD:HandleFinishGateCrossing(racer, now, pos, lastDistance, dis
             if seg.index == gateProject.nearest_segment then
                 local dot = (pos.x - previousPos.x) * (seg.b.x - seg.a.x)
                     + (pos.y - previousPos.y) * (seg.b.y - seg.a.y)
+                -- FIX130: do not latch finish_gate_inside on a backward sample (wall bounce,
+                -- kart bump or projection ambiguity at the gate). Latching here blocked the
+                -- real forward crossing until the kart left the gate, so the lap was lost.
                 if dot <= 0 then return false end
                 break
             end
         end
     end
+    racer.finish_gate_inside = distGate <= exitRadius
     racer.finish_gate_passes = (tonumber(racer.finish_gate_passes or 0) or 0) + 1
 
     if self.firstFinishGatePassIsFree and racer.first_finish_gate_passed ~= true then
@@ -578,7 +592,8 @@ function DotaKartHUD:HandleFinishGateCrossing(racer, now, pos, lastDistance, dis
         -- The gate radius may be entered before projection wraps to segment 1.
         -- Do not add both a new lap AND the old lap's near-full distance.
         racer.finish_progress_pending_wrap = distance > len * 0.5
-    elseif self.debugHud then
+    else
+        -- FIX130: always log rejected gate crossings (Mines lap investigation).
         local need, total = self:GetTrackPointRequiredVisitCount()
         print("[DotaKartHUD] Volta rejeitada p" .. tostring(racer.player_id) .. " reason=" .. tostring(reason) .. " checkpoints=" .. tostring(racer.lap_checkpoint_count or 0) .. " dk_track=" .. tostring(racer.track_point_visit_count or 0) .. "/" .. tostring(total) .. " need=" .. tostring(need) .. " maxDist=" .. tostring(math.floor(racer.max_distance_this_lap or 0)))
     end
@@ -885,6 +900,19 @@ function DotaKartHUD:AutoRegisterHeroKarts()
     end
 end
 
+-- FIX131: racers that start already past the finish line (random grid slots outside the
+-- gate radius) must not get the free first crossing; otherwise their real lap 1 crossing
+-- was eaten as the free pass and the progress wrap dropped them to last place.
+function DotaKartHUD:IsAheadOfFinishGate(pos)
+    local gatePos = self:GetFinishGatePosition()
+    if pos == nil or gatePos == nil or self.finishGatePos == nil then return false end
+    local len = math.max(1, tonumber(self.trackLength or 1) or 1)
+    local kart = self:ProjectPositionOnTrack(pos)
+    local gate = self:ProjectPositionOnTrack(gatePos)
+    local ahead = ((tonumber(kart.distance) or 0) - (tonumber(gate.distance) or 0)) % len
+    return ahead < len * 0.5
+end
+
 function DotaKartHUD:ResetRacerForRace(racer, now)
     racer.completed_laps = 0
     racer.lap = 1
@@ -916,7 +944,7 @@ function DotaKartHUD:ResetRacerForRace(racer, now)
         -- Se o jogador nasce dentro da área da linha, ele precisa sair e cruzar de novo.
         -- Isso evita contar a largada como volta.
         racer.finish_gate_inside = self:IsInsideFinishGate(unit:GetAbsOrigin(), self.finishGateRadius or 430)
-        if racer.finish_gate_inside == true and self.firstFinishGatePassIsFree == true then
+        if self.firstFinishGatePassIsFree == true and (racer.finish_gate_inside == true or self:IsAheadOfFinishGate(pos)) then
             -- Nascer em cima/antes da linha já consome a passagem inicial gratuita.
             racer.first_finish_gate_passed = true
         end
@@ -1164,9 +1192,10 @@ function DotaKartHUD:UpdateSingleRacer(racer, now)
         racer.track_point_visit_count = racer.track_point_visit_count or 0
         self:UpdateTrackPointVisits(racer, pos)
         racer.finish_gate_inside = self:IsInsideFinishGate(pos, self.finishGateRadius or 430)
-        if racer.finish_gate_inside == true and self.firstFinishGatePassIsFree == true then
+        if self.firstFinishGatePassIsFree == true and (racer.finish_gate_inside == true or self:IsAheadOfFinishGate(pos)) then
             racer.first_finish_gate_passed = true
         end
+        print("[DotaKartHUD] FIX131 start p" .. tostring(racer.player_id) .. " dist=" .. tostring(math.floor(distance)) .. "/" .. tostring(math.floor(len)) .. " insideGate=" .. tostring(racer.finish_gate_inside) .. " firstGateUsed=" .. tostring(racer.first_finish_gate_passed))
     else
         local lastDistance = racer.path_distance
         local delta = distance - lastDistance

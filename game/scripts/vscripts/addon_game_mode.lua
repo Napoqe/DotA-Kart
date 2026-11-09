@@ -1,3 +1,4 @@
+LinkLuaModifier("modifier_dotakart_audio_preferences", "dotakart/modifiers/modifier_audio_preferences.lua", LUA_MODIFIER_MOTION_NONE)
 -- DotA Kart - addon_game_mode.lua
 -- FIX51: countdown soundevents + local start countdown fixes.
 
@@ -327,6 +328,20 @@ function Precache(context)
     PrecacheResource("particle", "particles/econ/items/gyrocopter/hero_gyrocopter_gyrotechnics/gyro_homing_missile_fuse.vpcf", context)
     -- FIX126: Plague Ward / The Swarm / Storm Hammer / Illusory Orb.
     PrecacheResource("model", "models/heroes/venomancer/venomancer_ward.vmdl", context)
+    -- FIX138: Pounce / Ensnare / Serpent Ward
+    PrecacheResource("model", "models/heroes/shadowshaman/shadowshaman_totem.vmdl", context)
+    PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_slark.vsndevts", context)
+    PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_naga_siren.vsndevts", context)
+    PrecacheResource("soundfile", "soundevents/game_sounds_heroes/game_sounds_shadowshaman.vsndevts", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_slark/slark_pounce_start.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_slark/slark_pounce_trail.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_slark/slark_pounce_leash.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_slark/slark_pounce_ground.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_siren/siren_net_projectile.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_siren/siren_net.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_siren/siren_net_projectile_launch.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_shadowshaman/shadowshaman_shackle.vpcf", context)
+    PrecacheResource("particle", "particles/units/heroes/hero_shadowshaman/shadowshaman_shackle_net.vpcf", context)
     PrecacheResource("model", "models/heroes/weaver/weaver_bug.vmdl", context)
     PrecacheResource("particle", "particles/units/heroes/hero_venomancer/venomancer_plague_ward_projectile.vpcf", context)
     PrecacheResource("particle", "particles/units/heroes/hero_venomancer/venomancer_plague_ward_projectile_explosion.vpcf", context)
@@ -626,6 +641,7 @@ function CAddonTemplateGameMode:InitGameMode()
         self:OnDotaKartSetupConfirm(eventSourceIndex, keys or {})
     end)
 
+    require("dotakart/audio_preferences"):Init()
     ListenToGameEvent("npc_spawned", Dynamic_Wrap(CAddonTemplateGameMode, "OnNPCSpawned"), self)
     ListenToGameEvent("player_connect_full", Dynamic_Wrap(CAddonTemplateGameMode, "OnPlayerConnectFull"), self)
 
@@ -1033,6 +1049,7 @@ function CAddonTemplateGameMode:FinalizeDotaKartGameSetup(source, keys)
         -- No confirm manual, aceita tambem o ultimo payload do host.
         if keys.laps ~= nil then GameRules.DotaKartPublicAI:SetConfiguredLaps(tonumber(keys.laps) or 3, tostring(source or "setup")) end
         if keys.bot_count ~= nil then GameRules.DotaKartPublicAI:SetConfiguredBotCount(tonumber(keys.bot_count), tostring(source or "setup")) end
+        GameRules.DotaKartPublicAI:SetAdvancedBotSettings(keys)
         GameRules.DotaKartPublicAI:LockHostSetup()
     end
 
@@ -1846,7 +1863,8 @@ function CAddonTemplateGameMode:GetRadiantTrackAnnouncerSound(seconds)
 end
 
 function CAddonTemplateGameMode:UsesBuiltinCountdownAnnouncer()
-    return self:IsRadiantTrackMap() or (GetMapName ~= nil and GetMapName() == "rome")
+    -- FIX142: dust uses the same built-in announcer countdown as Radiant Track and Rome.
+    return self:IsRadiantTrackMap() or (GetMapName ~= nil and (GetMapName() == "rome" or GetMapName() == "dust"))
 end
 
 function CAddonTemplateGameMode:EmitCountdownSoundReliable(soundName, seconds)
@@ -2160,6 +2178,9 @@ function CAddonTemplateGameMode:OnNPCSpawned(keys)
                 print("[DotA Kart] AVISO: heroi fora da lista oficial registrado porque ReplaceHeroWith falhou: " .. tostring(heroName))
             end
 
+            if not (PlayerResource.IsFakeClient and PlayerResource:IsFakeClient(playerID)) then
+                pcall(function() spawnedUnit:AddNewModifier(spawnedUnit,nil,"modifier_dotakart_audio_preferences",{}) end)
+            end
             self:ApplyCustomKartHeroModel(spawnedUnit)
             self:AssignPlayerToFFA(playerID)
             DotaKartHUD:RegisterKart(playerID, spawnedUnit)

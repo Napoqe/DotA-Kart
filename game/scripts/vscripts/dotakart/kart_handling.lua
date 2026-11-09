@@ -14,7 +14,9 @@ end
 
 function DotaKartHandling:Update(config, st, yaw, speed, steer, dt)
     dt = math.max(0, dt)
-    if not config.drift_enabled or speed < 120 or st.ball_lightning_active then
+    -- FIX132: Black King Bar (Estrelinha) gives smooth, grip-only turning.
+    local starActive = (tonumber(st.star_until) or 0) > ((GameRules and GameRules.GetGameTime and GameRules:GetGameTime()) or 0)
+    if not config.drift_enabled or speed < 120 or st.ball_lightning_active or starActive then
         -- Reverse keeps its existing inverted steering and full tire grip.
         self:Reset(st, yaw)
         return yaw, speed
@@ -34,7 +36,8 @@ function DotaKartHandling:Update(config, st, yaw, speed, steer, dt)
     local power = clamp(speed / math.max(1, config.max_speed or 880), 0, 1)
     local weight = st.drift_weight
     local grip = 13 - (13 - (config.drift_grip or 3.4)) * weight
-    local limit = (10 + ((config.drift_max_angle or 28) - 10) * weight) * power
+    local baseAngle = config.drift_base_angle or 10
+    local limit = (baseAngle + ((config.drift_max_angle or 28) - baseAngle) * weight) * power
     local slip = angle(yaw - (st.motion_yaw or yaw)) * math.exp(-grip * dt)
     slip = clamp(slip, -limit, limit)
     st.motion_yaw = angle(yaw - slip)

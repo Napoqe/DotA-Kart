@@ -1,6 +1,26 @@
 // Units File
 "DOTAUnits"
 {
+	"npc_dotakart_audio_controller"
+	{
+		"BaseClass" "npc_dota_creature"
+		"Model" "models/development/invisiblebox.vmdl"
+		"ModelScale" "0.01"
+		"AttackCapabilities" "DOTA_UNIT_CAP_NO_ATTACK"
+		"MovementCapabilities" "DOTA_UNIT_CAP_MOVE_NONE"
+		"StatusHealth" "1"
+		"StatusHealthRegen" "0"
+		"StatusMana" "0"
+		"VisionDaytimeRange" "0"
+		"VisionNighttimeRange" "0"
+		"BountyXP" "0"
+		"BountyGoldMin" "0"
+		"BountyGoldMax" "0"
+		"BoundsHullName" "DOTA_HULL_SIZE_SMALL"
+		"RingRadius" "0"
+		"HealthBarOffset" "-1000"
+		"Ability1" "dotakart_audio_link" // FIX134: loads the audio modifier on the client
+	}
 	"Version"	"1"
 	
 	//=================================================================================	

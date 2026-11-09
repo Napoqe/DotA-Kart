@@ -455,7 +455,14 @@ function DotaKartAntiSkip:OnRacerProjected(racer, unit, pos, project, now)
         windowPathGain = 0
     end
 
+    -- FIX143: a big forward jump only counts as a skip when the track distance gained is much
+    -- larger than the real distance moved (a cut). Burrowstrike/Leap straight along the road
+    -- move many dk_track_* segments in one sample but gain about the same distance they travel.
+    local stepPathGain = currentDistance - (tonumber(st.last_project_distance) or currentDistance)
+    if stepPathGain < -trackLength * 0.35 then stepPathGain = stepPathGain + trackLength end
     local suspiciousSegmentJump = segmentJump > (tonumber(self.config.max_forward_segment_jump) or 6)
+        and stepPathGain > worldStep * (tonumber(self.config.shortcut_path_ratio) or 1.55)
+            + (tonumber(self.config.shortcut_path_margin) or 260)
     local suspiciousShortcutCut = windowAge <= (tonumber(self.config.shortcut_window) or 1.10)
         and windowSegmentGain >= (tonumber(self.config.shortcut_min_segment_gain) or 7)
         and windowPathGain >= (tonumber(self.config.shortcut_min_path_gain) or 900)

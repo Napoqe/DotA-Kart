@@ -3,6 +3,16 @@
 {
 	"Version"		"1"
 
+	// FIX134: hidden ability on the audio controller unit. Ability Lua files are loaded by the
+	// client too, so its LinkLuaModifier registers modifier_dotakart_audio_preferences client-side.
+	"dotakart_audio_link"
+	{
+		"BaseClass"					"ability_lua"
+		"ScriptFile"					"dotakart/abilities/dotakart_audio_link"
+		"AbilityBehavior"				"DOTA_ABILITY_BEHAVIOR_PASSIVE | DOTA_ABILITY_BEHAVIOR_HIDDEN | DOTA_ABILITY_BEHAVIOR_NOT_LEARNABLE"
+		"MaxLevel"					"1"
+	}
+
 	//=================================================================================================================
 	// Templar Assassin: Refraction Holdout
 	//=================================================================================================================

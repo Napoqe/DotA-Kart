@@ -1,8 +1,10 @@
 <root>
     <styles>
+        <include src="file://{resources}/styles/custom_game/dotakart_music.css" />
         <include src="file://{resources}/styles/custom_game/dotakart_game_setup.css" />
     </styles>
     <scripts>
+        <include src="file://{resources}/scripts/custom_game/dotakart_music.js" />
         <include src="file://{resources}/scripts/custom_game/dotakart_game_setup.js" />
     </scripts>
 
@@ -50,6 +52,26 @@
                     <Label class="DKSetupSectionTitle" text="#DOTA_KART_SETUP_STARTING_GRID" />
                     <Button id="DKSetupRandomStarts" class="DKSetupWideButton DKSetupSelected" hittest="true" onactivate="DotaKartSetup_ToggleRandomStarts()"><Label id="DKSetupRandomStartsLabel" text="#DOTA_KART_SETUP_RANDOM_STARTS_ON" /></Button>
                 </Panel>
+                <Panel class="DKSetupSection" hittest="true" hittestchildren="true">
+                    <Button id="DKSetupAdvancedToggle" class="DKSetupWideButton" hittest="true"><Label id="DKSetupAdvancedToggleLabel" text="#DOTA_KART_SETUP_ADVANCED_BOTS" /></Button>
+                    <Panel id="DKSetupAdvancedBots" class="DKSetupAdvancedBots" hittest="true" hittestchildren="true">
+                        <Label class="DKSetupSectionTitle" text="#DOTA_KART_SETUP_BOT_SPEED" />
+                        <Panel class="DKSetupAdjustRow">
+                            <Button id="DKSetupSpeedMinus" class="DKSetupSmallButton"><Label id="DKSetupSpeedMinusLabel" text="-" /></Button>
+                            <Label id="DKSetupBotSpeedValue" class="DKSetupAdjustValue" text="100%" />
+                            <Button id="DKSetupSpeedPlus" class="DKSetupSmallButton"><Label id="DKSetupSpeedPlusLabel" text="+" /></Button>
+                        </Panel>
+                        <Label class="DKSetupHint" text="#DOTA_KART_SETUP_BOT_SPEED_HINT" />
+                        <Label class="DKSetupSectionTitle" text="#DOTA_KART_SETUP_BOT_POOL" />
+                        <Panel class="DKSetupAdjustRow">
+                            <Button id="DKSetupPoolMinus" class="DKSetupTinyButton"><Label id="DKSetupPoolMinusLabel" text="-" /></Button>
+                            <Label id="DKSetupBotPoolValue" class="DKSetupPoolValue" text="#DOTA_KART_SETUP_BOT_POOL_2" />
+                            <Button id="DKSetupPoolPlus" class="DKSetupTinyButton"><Label id="DKSetupPoolPlusLabel" text="+" /></Button>
+                        </Panel>
+                        <Label class="DKSetupHint" text="#DOTA_KART_SETUP_BOT_POOL_HINT" />
+                    </Panel>
+                </Panel>
+
                 <Label id="DKSetupHostStatus" class="DKSetupHostStatus" text="#DOTA_KART_SETUP_STATUS_HOST_ONLY" />
                 <Label id="DKSetupHint" class="DKSetupHint" text="#DOTA_KART_SETUP_HINT" />
             </Panel>
@@ -71,5 +93,6 @@
             <Label id="DKSetupConfirmHint" class="DKSetupConfirmHint" text="#DOTA_KART_SETUP_CONFIRM_HINT" />
             <Button id="DKSetupConfirm" class="DKSetupConfirmButton" hittest="true" onactivate="DotaKartSetup_Confirm()"><Label id="DKSetupConfirmLabel" text="#DOTA_KART_SETUP_CONFIRM" /></Button>
         </Panel>
+        <Panel id="DKMusicWidgetHost" class="DKMusicHost" hittest="true" hittestchildren="true" />
     </Panel>
 </root>

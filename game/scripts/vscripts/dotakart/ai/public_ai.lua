@@ -106,7 +106,7 @@ function DotaKartPublicAI:Init(gameMode, hud, controller, itemSystem)
         arrive_distance = 190,
         item_box_search_radius = 1150,
         item_box_use_ahead_radius = 780,
-        item_enemy_behind_radius = 1050,
+        item_enemy_behind_radius = 2500,
         item_use_check_min = 0.25,
         item_use_check_max = 0.65,
         same_speed_as_players = true,
@@ -140,7 +140,9 @@ function DotaKartPublicAI:Init(gameMode, hud, controller, itemSystem)
 
     self.settings = {
         laps = self.config.default_laps,
-        bot_count = self.config.default_bot_count
+        bot_count = self.config.default_bot_count,
+        bot_speed_pct = 100,
+        bot_item_bias = 0
     }
 
     self.bots = {}
@@ -241,6 +243,8 @@ function DotaKartPublicAI:BroadcastHostSettings()
         setup_screen = DOTA_KART_PUBLIC_SETUP_SCREEN == true and 1 or 0,
         bots_enabled = self.config.enabled and 1 or 0,
         bot_count = self:GetConfiguredBotCount(),
+        bot_speed_pct = self:GetConfiguredBotSpeed(),
+        bot_item_bias = self:GetConfiguredBotItemBias(),
         max_bots = self.config.max_bots or 7,
         fill_empty_slots = self:GetConfiguredBotCount() < 0 and 1 or 0,
         setup_remaining = math.ceil(self:GetSetupRemainingSeconds()),
@@ -293,6 +297,8 @@ function DotaKartPublicAI:OnHostSettingsEvent(keys)
     if keys.bot_count ~= nil then
         self:SetConfiguredBotCount(tonumber(keys.bot_count), "panorama_host")
     end
+
+    self:SetAdvancedBotSettings(keys)
 
     if keys.random_start_positions ~= nil and self.gameMode ~= nil then
         self.gameMode.randomStartPositions = tonumber(keys.random_start_positions) == 1
@@ -1211,6 +1217,7 @@ function DotaKartPublicAI:CreateBotForSlot(slot)
 end
 
 local RomeTrack = GetMapName ~= nil and GetMapName() == "rome" and require("dotakart/maps/rome") or nil
+local DustTrack = GetMapName ~= nil and GetMapName() == "dust" and require("dotakart/maps/dust") or nil
 
 function DotaKartPublicAI:PreparePublicBots()
     pcall(function() self:CleanupLegacyVisualProxies() end)
@@ -1329,6 +1336,9 @@ function DotaKartPublicAI:OnKartTeleported(playerID, unit, pos)
         if RomeTrack ~= nil then RomeTrack:ResetBotRoute(bot, pos, project) end
     end
     bot.next_index = (index % #self.track) + 1
+    bot.route_motion_pending = nil
+    bot.overtake_offset = 0; bot.overtake_until = 0
+    bot.clone_avoid_offset = 0; bot.clone_avoid_until = 0
     self:ResetAntiStuckWatch(bot, DKNow(), pos)
 end
 
@@ -1455,7 +1465,7 @@ function DotaKartPublicAI:FindEnemy(bot, range, frontDotMin, wantBehind)
     local unit = bot.unit
     if not DKValidUnit(unit) then return nil, -1, 999999, 0 end
     local pos = unit:GetAbsOrigin()
-    local fwd = DKNormalize2D(bot.last_dir or unit:GetForwardVector(), Vector(1,0,0))
+    local fwd = DKNormalize2D(unit:GetForwardVector(), Vector(1,0,0))
     local bestUnit = nil
     local bestID = -1
     local bestDist = 999999
@@ -1475,7 +1485,7 @@ function DotaKartPublicAI:FindEnemy(bot, range, frontDotMin, wantBehind)
             if self.controller ~= nil and self.controller.GetHeroForPlayer ~= nil then
                 other = self.controller:GetHeroForPlayer(otherID)
             end
-            if DKValidUnit(other) then
+            if DKValidUnit(other) and other:IsAlive() and not (self.itemSystem and self.itemSystem.IsKartUntargetable and self.itemSystem:IsKartUntargetable(otherID)) then
                 local d = DKDistance2D(pos, other:GetAbsOrigin())
                 if d <= (range or 900) then
                     local dir = DKNormalize2D(other:GetAbsOrigin() - pos, fwd)
@@ -1666,11 +1676,23 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
     local kind = def.kind or ""
     local unit = bot.unit
     local pos = DKValidUnit(unit) and unit:GetAbsOrigin() or Vector(0,0,0)
-    local fwd = DKNormalize2D(bot.last_dir or (DKValidUnit(unit) and unit:GetForwardVector() or Vector(1,0,0)), Vector(1,0,0))
+    local fwd = DKNormalize2D(DKValidUnit(unit) and unit:GetForwardVector() or bot.last_dir, Vector(1,0,0))
 
-    local ahead = self:FindEnemy(bot, 1500, 0.20, false)
+    local fireRange=self:GetBotFireRange(def)
+    local straight=kind=='power_cogs' or kind=='sacred_arrow' or kind=='meat_hook'
+        or kind=='hookshot' or kind=='tornado' or kind=='ice_shards' or kind=='the_swarm'
+    local cone=straight and .94 or .35
+    local ahead = self:FindEnemy(bot, fireRange, cone, false)
     local near = self:FindEnemy(bot, 650, nil, false)
-    local behind = self:FindEnemy(bot, self.config.item_enemy_behind_radius or 1050, nil, true)
+    local behind = self:FindEnemy(bot, math.min(fireRange,self.config.item_enemy_behind_radius or 2500), nil, true)
+    if straight and DKValidUnit(behind) then
+        local to=DKNormalize2D(behind:GetAbsOrigin()-pos,fwd)
+        if to.x*fwd.x+to.y*fwd.y> -cone then behind=nil end
+    end
+    -- Orb decisions run in the projectile tick; item cooldowns and nearby boxes
+    -- must never force a blind jaunt.
+    local orb=itemSystem.activeIllusoryOrbs and itemSystem.activeIllusoryOrbs[bot.player_id]
+    if kind=='illusory_orb' and orb and not orb.destroyed then return end
 
     -- FIX124: Unstable Concoction Throw explicitly supports rear fire for bots.
     -- If detonation is getting close, throw even without a target so the bot cannot
@@ -1716,8 +1738,11 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
                 self:UseHeldItem(bot, false)
             end
             return
-        elseif kind == "star" or kind == "frost_shield" or kind == "invisibility" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" or kind == "plague_ward" or kind == "nether_ward" or kind == "counterspell" then
+        elseif kind == "star" or kind == "frost_shield" or kind == "invisibility" or kind == "torrent_storm" or kind == "doppelwalk" or kind == "shukuchi" or kind == "crystal_clone" or kind == "plague_ward" or kind == "nether_ward" or kind == "counterspell" or kind == "serpent_ward" then
             self:UseHeldItem(bot, false)
+            return
+        elseif kind == "ensnare" then -- FIX138
+            self:UseHeldItem(bot, true)
             return
         elseif kind == "nitro" then
             if DKRandomFloat(0, 1) < 0.65 then self:UseHeldItem(bot, false) end
@@ -1740,16 +1765,23 @@ function DotaKartPublicAI:ThinkItemUse(bot, now)
     elseif kind == "illusory_orb" then
         local activeOrb = itemSystem.activeIllusoryOrbs and itemSystem.activeIllusoryOrbs[bot.player_id] or nil
         if activeOrb ~= nil and activeOrb.destroyed ~= true then
-            if DKLength2D(pos, activeOrb.pos or pos) >= 800 or DKRandomFloat(0,1) < 0.45 then self:UseHeldItem(bot, false) end
+            if self:ShouldJauntToOrb(bot,activeOrb) then self:UseHeldItem(bot,false) end
         elseif DKValidUnit(ahead) then
             self:UseHeldItem(bot, false)
         end
     elseif kind == "power_cogs" then
-        if DKValidUnit(near) then self:UseHeldItem(bot, false) end
+        if DKValidUnit(ahead) then self:UseHeldItem(bot, false) end
     elseif kind == "ice_wall" then
         if DKValidUnit(behind) or DKRandomFloat(0, 1) < 0.40 then self:UseHeldItem(bot, false) end
     elseif kind == "charge_darkness" or kind == "chain_frost" or kind == "item_steal" then
         if DKValidUnit(near) or DKValidUnit(ahead) then self:UseHeldItem(bot, false) end
+    elseif kind == "pounce" then -- FIX138: leap onto a racer close ahead
+        local target = itemSystem:FindNearestEnemyKartInArc(bot.player_id, bot.unit:GetAbsOrigin(), fwd, 2850, 0.85)
+        if DKValidUnit(target) then self:UseHeldItem(bot, false) end
+    elseif kind == "ensnare" then
+        if DKValidUnit(ahead) then self:UseHeldItem(bot, false) end
+    elseif kind == "serpent_ward" then
+        if DKValidUnit(near) or DKRandomFloat(0, 1) < 0.30 then self:UseHeldItem(bot, false) end
     elseif kind == "speed_drain" then
         local target = itemSystem:FindNearestEnemyKart(bot.player_id, bot.unit:GetAbsOrigin(), 1200)
         if DKValidUnit(target) then self:UseHeldItem(bot, false) end
@@ -1804,7 +1836,14 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
 
     if controller and controller.GetState then
         local state = controller:GetState(bot.player_id)
+        -- FIX138: Pounce moves the bot itself during the leap.
+        if (tonumber(state.pounce_motion_until) or 0) > now then
+            bot.route_motion_pending=true
+            self:ResetAntiStuckWatch(bot, now, bot.unit:GetAbsOrigin())
+            return
+        end
         if (state.crystal_slide_until or 0) > now then
+            bot.route_motion_pending=true
             self:ResetAntiStuckWatch(bot, now, bot.unit:GetAbsOrigin())
             return
         end
@@ -1816,6 +1855,7 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
             -- a propria IA chama o UpdateKart apenas durante stun/lock para manter spin/parada.
             if controller.UpdateKart ~= nil and controller.GetState ~= nil then
                 local st = controller:GetState(bot.player_id)
+                if (st.locked_until or 0)>now or st.anti_skip_glimpse_active then bot.route_motion_pending=true end
                 controller:UpdateKart(bot.player_id, bot.unit, st, dt or (self.config.tick_rate or 0.05), now)
             end
             pcall(function() if not bot.unit.dk_kart_animated_visual then bot.unit:RemoveNoDraw() end end)
@@ -1846,6 +1886,8 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
         return
     end
 
+    if bot.route_motion_pending then self:OnKartTeleported(bot.player_id,bot.unit,bot.unit:GetAbsOrigin()) end
+
     if now >= (bot.next_lane_change or 0) then
         bot.lane_jitter = DKRandomFloat(-45, 45)
         bot.next_lane_change = now + DKRandomFloat(2.0, 5.0)
@@ -1868,13 +1910,10 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
     local toTarget = target - pos
     local dist = DKLength2D(toTarget)
 
-    if self:HasReachedRouteTarget(bot,pos,target) then
-        self:AdvanceTarget(bot)
-        target, trackDir = self:GetOffsetTarget(bot)
-        if target == nil then return end
-        toTarget = target - pos
-        dist = DKLength2D(toTarget)
-    end
+    self:AdvancePassedRouteTargets(bot,pos)
+    target,trackDir=self:GetOffsetTarget(bot)
+    if target==nil then return end
+    toTarget=target-pos; dist=DKLength2D(toTarget)
 
     local moveDir = DKNormalize2D(toTarget, trackDir or bot.last_dir or Vector(1,0,0))
     local boxTarget = self:GetBestItemBoxTarget(bot, pos, moveDir)
@@ -1887,6 +1926,21 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
         end
     end
 
+    -- FIX138: dust map - most bots steer around the slowing sand patches.
+    if DustTrack ~= nil then
+        local sandTarget = DustTrack:GetSandAvoidTarget(bot, pos, moveDir)
+        if sandTarget ~= nil then
+            target = sandTarget
+            moveDir = DKNormalize2D(sandTarget - pos, moveDir)
+            dist = DKLength2D(sandTarget - pos)
+        end
+    end
+
+    local ramTarget=self:GetBKBChaseTarget(bot,pos,avoidDir)
+    if ramTarget then
+        target=ramTarget;dist=DKDistance2D(pos,target)
+        moveDir=DKNormalize2D(target-pos,moveDir)
+    end
     bot.last_dir = moveDir
 
     -- FIX64: IA pública usa a mesma velocidade máxima/aceleração dos jogadores humanos,
@@ -1936,11 +1990,18 @@ function DotaKartPublicAI:ThinkBot(bot, now, dt)
         end
     end
 
+    -- FIX136: public bots also slow down in the dust map sand patches.
+    if DustTrack ~= nil and not ignoreSlowEffects and unit ~= nil and not (controller and controller.IsKartStarActive and controller:IsKartStarActive(bot.player_id)) then
+        local okSand, inSand = pcall(function() return DustTrack:IsInSand(unit:GetAbsOrigin()) end)
+        if okSand and inSand then maxSpeed = math.max(140, maxSpeed * DustTrack:GetSandSpeedFactor()) end
+    end
+
     local pugnaFactor = 1
     if controller and controller.GetPugnaSpeedMultiplier then
         pugnaFactor = controller:GetPugnaSpeedMultiplier(bot.player_id, now, ignoreSlowEffects)
         maxSpeed = math.max(45, maxSpeed * pugnaFactor)
     end
+    maxSpeed=maxSpeed*self:GetConfiguredBotSpeed()/100
     local approachSpeed=self:GetTurnApproachSpeed(st,moveDir,maxSpeed)
     local currentSpeed = tonumber(bot.current_speed or 0) or 0
     if st ~= nil and (st.speed or 0) > currentSpeed then currentSpeed = st.speed end
@@ -2064,4 +2125,110 @@ function DotaKartPublicAI:RemoveBots()
     self.bots = {}
     self.running = false
     print("[DotaKartPublicAI] Bots publicos removidos.")
+end
+
+-- Bot-only decisions. Course projection is shared with the HUD, including Rome's branch.
+function DotaKartPublicAI:GetConfiguredBotSpeed()
+    return math.floor(DKClamp(self.settings and self.settings.bot_speed_pct or 100,80,140))
+end
+
+function DotaKartPublicAI:GetConfiguredBotItemBias()
+    return math.floor(DKClamp(self.settings and self.settings.bot_item_bias or 0,-2,2))
+end
+
+function DotaKartPublicAI:SetAdvancedBotSettings(keys)
+    self.settings=self.settings or {}
+    if keys.bot_speed_pct~=nil then
+        self.settings.bot_speed_pct=math.floor(DKClamp(keys.bot_speed_pct,80,140))
+    end
+    if keys.bot_item_bias~=nil then
+        self.settings.bot_item_bias=math.floor(DKClamp(keys.bot_item_bias,-2,2))
+    end
+end
+
+function DotaKartPublicAI:GetBotFireRange(def)
+    local kind=def.kind
+    if kind=='power_cogs' then return 3200 end
+    -- Detection grows without extending the item's actual gameplay range.
+    local range=tonumber(def.cast_range or def.travel_distance or def.range or def.homing_radius) or 3000
+    if kind=='unstable_concoction_throw' then range=tonumber(def.cast_range) or 1800 end
+    return math.min(4200,range)
+end
+
+function DotaKartPublicAI:GetCourseGain(fromProject,toProject)
+    local hud=self.hud or GameRules.DotaKartHUD
+    local len=tonumber(hud and hud.trackLength) or 0
+    if len<=0 or not fromProject or not toProject then return nil end
+    local gain=((toProject.distance or 0)-(fromProject.distance or 0)+len*.5)%len-len*.5
+    return gain
+end
+
+function DotaKartPublicAI:IsSafeBotLanding(bot,pos)
+    local ctrl=self.controller or GameRules.DotaKartController
+    if not ctrl or not ctrl.IsPositionOnOfficialPath then return false end
+    -- Leave room for the kart body, including Rome's precise road footprint.
+    for _,off in ipairs({Vector(0,0),Vector(85,0),Vector(-85,0),Vector(0,85),Vector(0,-85)}) do
+        local p=pos+off
+        if not ctrl:IsPositionOnOfficialPath(p) then return false end
+    end
+    if ctrl.IsWorldCollisionBlocked and ctrl:IsWorldCollisionBlocked(pos,bot.unit,pos,nil) then return false end
+    return true
+end
+
+function DotaKartPublicAI:ShouldJauntToOrb(bot,data)
+    if not bot or not DKValidUnit(bot.unit) or not data or data.destroyed then return false end
+    local hud=self.hud or GameRules.DotaKartHUD
+    if not hud or not hud.ProjectPositionOnTrack or #(self.track or {})<2 then return false end
+    local ctrl=self.controller or GameRules.DotaKartController
+    local now=DKNow()
+    if not bot.unit:IsAlive() or (ctrl and ((ctrl.IsKartRooted and ctrl:IsKartRooted(bot.player_id,now))
+        or (ctrl.IsKartStunned and ctrl:IsKartStunned(bot.player_id,now))
+        or (ctrl.IsKartLocked and ctrl:IsKartLocked(bot.player_id,now)))) then return false end
+    local pos=bot.unit:GetAbsOrigin()
+    local landing=Vector(data.pos.x,data.pos.y,GetGroundHeight(data.pos,bot.unit))
+    if not self:IsSafeBotLanding(bot,landing) then return false end
+    local from=hud:ProjectPositionOnTrack(pos)
+    local to=hud:ProjectPositionOnTrack(landing)
+    local gain=self:GetCourseGain(from,to)
+    if not gain or gain<350 then return false end
+    local worldDist=DKDistance2D(pos,landing)
+    if gain>worldDist*1.8+450 then return false end -- unrelated road beyond a hairpin
+    local dir=data.direction or DKNormalize2D(landing-pos)
+    local nextPos=landing+dir*((tonumber(data.def.speed) or 2025)*.18)
+    local courseDir=self:GetPoint(((to.nearest_segment or 1)%#self.track)+1,bot)
+    courseDir=courseDir and DKNormalize2D(courseDir-landing,dir) or dir
+    local bend=courseDir.x*dir.x+courseDir.y*dir.y<.72
+    data.bot_jaunt_gain=data.bot_jaunt_gain or DKRandomFloat(1000,1800)
+    return gain>=data.bot_jaunt_gain or bend or not self:IsSafeBotLanding(bot,nextPos)
+        or (data.remaining_distance or 99999)<450
+end
+
+function DotaKartPublicAI:GetBKBChaseTarget(bot,pos,fwd)
+    local system=self.itemSystem or GameRules.DotaKartItemSystem
+    if not system or not system.IsPlayerStarActive or not system:IsPlayerStarActive(bot.player_id) then return nil end
+    local victim,victimID=self:FindEnemy(bot,1100,.35,false)
+    if not DKValidUnit(victim) or system:IsPlayerStarActive(victimID) then return nil end
+    local hud=self.hud or GameRules.DotaKartHUD
+    if not hud or not hud.ProjectPositionOnTrack then return nil end
+    local vp=victim:GetAbsOrigin()
+    local gain=self:GetCourseGain(hud:ProjectPositionOnTrack(pos),hud:ProjectPositionOnTrack(vp))
+    if not gain or gain< -100 or gain>1500 then return nil end
+    local target=vp+fwd*100
+    -- Ramming never overrides the road boundary or chases across another section.
+    if not self:IsSafeBotLanding(bot,target) then return nil end
+    for _,t in ipairs({.25,.5,.75}) do
+        if not self:IsSafeBotLanding(bot,pos+(target-pos)*t) then return nil end
+    end
+    bot.overtake_offset=0;bot.overtake_until=0
+    return target
+end
+
+function DotaKartPublicAI:AdvancePassedRouteTargets(bot,pos)
+    -- Fast boosts can pass several closely spaced points in one tick.
+    for _=1,math.min(8,#(self.track or {})) do
+        local target=self:GetOffsetTarget(bot)
+        if not target or not self:HasReachedRouteTarget(bot,pos,target) then break end
+        self:AdvanceTarget(bot)
+        self:ResetAntiStuckWatch(bot,DKNow(),pos)
+    end
 end

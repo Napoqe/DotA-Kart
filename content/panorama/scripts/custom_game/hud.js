@@ -228,6 +228,9 @@ GameEvents.Subscribe("dotakart_render_refresh_prepare", function(data) {
         item_dotakart_ball_lightning: { type: "ability", icon: "storm_spirit_ball_lightning", label: "Ball Lightning", desc: "Press T to activate; press T again to stop while preserving remaining charges. Reaching 0 charges removes the item and leaves a Static Remnant." },
         item_dotakart_homing_missile: { type: "ability", icon: "gyrocopter_homing_missile", label: "Homing Missile", desc: "Tracks the racer one place ahead through the course; S+T targets one place behind. Longer travel means a longer stun." },
         item_dotakart_plague_ward: { type: "ability", icon: "venomancer_plague_ward", label: "Plague Ward", desc: "Orbits for up to 45s, sacrifices itself to cancel one enemy projectile and fires poison shots that slow without dealing damage." },
+        item_dotakart_pounce: { type: "ability", icon: "slark_pounce", label: "Pounce", desc: "Leaps forward 3000 units and leashes the first racer hit for 3s within 400 units of the landing spot." },
+        item_dotakart_ensnare: { type: "ability", icon: "naga_siren_ensnare", label: "Ensnare", desc: "Throws a net forward or backward that roots the target for 5s and reveals it." },
+        item_dotakart_serpent_ward: { type: "ability", icon: "shadow_shaman_mass_serpent_ward", label: "Serpent Ward", desc: "Orbits and blocks one projectile; shackles the nearest enemy racer for up to 4s." },
         item_dotakart_the_swarm: { type: "ability", icon: "weaver_the_swarm", label: "The Swarm", desc: "Launches Beetles that latch onto enemy karts and build 3% movement slow every second for 16s." },
         item_dotakart_storm_hammer: { type: "ability", icon: "sven_storm_bolt", label: "Storm Hammer", desc: "2550 range; stuns racers in a 300 AoE for 2.5s. Forward casts carry the kart only when a racer or Item Box target is acquired; S+T throws backward." },
         item_dotakart_illusory_orb: { type: "ability", icon: "puck_illusory_orb", label: "Illusory Orb", desc: "Launches a slowing orb with 6000 range and 1.5x projectile speed; press T again to teleport to it and create a short Dream Coil." },
@@ -926,6 +929,9 @@ GameEvents.Subscribe("dotakart_render_refresh_prepare", function(data) {
         "item_dotakart_ball_lightning",
         "item_dotakart_homing_missile",
         "item_dotakart_plague_ward",
+        "item_dotakart_pounce",
+        "item_dotakart_ensnare",
+        "item_dotakart_serpent_ward",
         "item_dotakart_nether_ward",
         "item_dotakart_counterspell",
         "item_dotakart_speed_drain",
@@ -975,6 +981,9 @@ GameEvents.Subscribe("dotakart_render_refresh_prepare", function(data) {
         item_dotakart_ball_lightning: { type: "ability", icon: "storm_spirit_ball_lightning", label: "Ball Lightning" },
         item_dotakart_homing_missile: { type: "ability", icon: "gyrocopter_homing_missile", label: "Homing Missile" },
         item_dotakart_plague_ward: { type: "ability", icon: "venomancer_plague_ward", label: "Plague Ward" },
+        item_dotakart_pounce: { type: "ability", icon: "slark_pounce", label: "Pounce" },
+        item_dotakart_ensnare: { type: "ability", icon: "naga_siren_ensnare", label: "Ensnare" },
+        item_dotakart_serpent_ward: { type: "ability", icon: "shadow_shaman_mass_serpent_ward", label: "Serpent Ward" },
         item_dotakart_the_swarm: { type: "ability", icon: "weaver_the_swarm", label: "The Swarm" },
         item_dotakart_storm_hammer: { type: "ability", icon: "sven_storm_bolt", label: "Storm Hammer" },
         item_dotakart_illusory_orb: { type: "ability", icon: "puck_illusory_orb", label: "Illusory Orb" },
@@ -1142,6 +1151,16 @@ GameEvents.Subscribe("dotakart_render_refresh_prepare", function(data) {
     var rouletteSpinSound = null;
 
     function TryEmit(alias) {
+        if (alias === "dotakart_itembox_spin_loop") {
+            try {
+                var spinHandle = Game.EmitSound(alias);
+                if (typeof spinHandle === "number") {
+                    if (!soundHandles[alias]) soundHandles[alias] = [];
+                    soundHandles[alias].push(spinHandle);
+                }
+            } catch (spinError) {}
+            return;
+        }
         // Game.EmitSound aceita string, mas Game.StopSound espera o HANDLE numérico retornado.
         // Nunca passe string para Game.StopSound: isso quebrava o hud.js no FIX27.
         try {
@@ -1520,13 +1539,24 @@ GameEvents.Subscribe("dotakart_render_refresh_prepare", function(data) {
     }
 
     var concoctionLabels = {};
+    var concoctionPosToken = {};
     function ShowConcoctionTimer(data) {
         data = data || {};
         var root = Find("#DKFloatingTextRoot");
         if (!root) return;
         var ent = Number(data.entindex || -1);
         if (ent < 0) return;
-        var key = "ent" + String(ent);
+        // FIX131: use_pos=1 is the thrown projectile; it has no entity, so it follows x/y/z.
+        var usePos = Number(data.use_pos || 0) === 1;
+        var key = (usePos ? "proj" : "ent") + String(ent);
+        if (usePos) {
+            concoctionPosToken[key] = (concoctionPosToken[key] || 0) + 1;
+            if (concoctionLabels["ent" + String(ent)] && concoctionLabels["ent" + String(ent)].IsValid()) {
+                concoctionLabels["ent" + String(ent)].visible = false;
+                concoctionLabels["ent" + String(ent)].style.visibility = "collapse";
+            }
+        }
+        var token = concoctionPosToken[key];
         var label = concoctionLabels[key];
         if (!label || !(label.IsValid && label.IsValid())) {
             label = $.CreatePanel("Label", root, "DKConcoctionTimer_" + key);
@@ -1540,6 +1570,7 @@ GameEvents.Subscribe("dotakart_render_refresh_prepare", function(data) {
         var dur = Math.max(0.12, Number(data.duration || 0.30));
         var start = (Game && Game.GetGameTime) ? Game.GetGameTime() : (Date.now() / 1000.0);
         function updatePosition() {
+            if (usePos && token !== concoctionPosToken[key]) return;
             var now = (Game && Game.GetGameTime) ? Game.GetGameTime() : (Date.now() / 1000.0);
             if (now - start >= dur || rem <= 0) {
                 if (label && label.IsValid && label.IsValid()) {
@@ -1548,9 +1579,9 @@ GameEvents.Subscribe("dotakart_render_refresh_prepare", function(data) {
                 }
                 return;
             }
-            var p = GetChaosWorldPos(data);
+            var p = usePos ? [Number(data.x || 0), Number(data.y || 0), Number(data.z || 0)] : GetChaosWorldPos(data);
             var screen = WorldToScreenStrict(p, root);
-            var visible = screen !== null && IsEntityVisibleToLocalPlayer(ent);
+            var visible = screen !== null && (usePos || IsEntityVisibleToLocalPlayer(ent));
             if (visible) {
                 label.visible = true;
                 label.style.visibility = "visible";

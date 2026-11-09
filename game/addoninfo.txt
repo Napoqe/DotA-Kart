@@ -8,6 +8,7 @@
 		"radiant_track",
 		"mines",
 		"rome",
+		"dust",
 	]
 	CheckAFKPlayers = false
 	DefaultMap = "radiant_track"

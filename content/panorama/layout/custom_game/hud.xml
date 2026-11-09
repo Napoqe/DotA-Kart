@@ -1,10 +1,12 @@
 <root>
     <styles>
+        <include src="file://{resources}/styles/custom_game/dotakart_music.css" />
         <include src="file://{resources}/styles/custom_game/hud.css" />
         <include src="file://{resources}/styles/custom_game/dotakart_nameplates.css" />
     </styles>
 
     <scripts>
+        <include src="file://{resources}/scripts/custom_game/dotakart_music.js" />
         <include src="file://{resources}/scripts/custom_game/hud.js" />
         <include src="file://{resources}/scripts/custom_game/dotakart_nameplates.js" />
         <include src="file://{resources}/scripts/custom_game/dotakart_camera.js" />
@@ -100,5 +102,6 @@
                 </Panel>
             </Panel>
         </Panel>
+        <Panel id="DKMusicWidgetHost" class="DKMusicHost" hittest="true" hittestchildren="true" />
     </Panel>
 </root>

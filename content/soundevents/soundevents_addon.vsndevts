@@ -793,38 +793,38 @@
 	// FIX122: Homing Missile
 	dotakart_homing_missile_launch =
 	{
-		type = "dota_update_default"
+		type = "dota_src1_3d"
 		vsnd_files = "sounds/weapons/hero/gyrocopter/homing_missile.vsnd"
 		volume = "1.0"
 		pitch = "1.0"
-		soundlevel = "86.0"
+		soundlevel = "70.0"
 		preload_vsnds = 1
 	}
 	dotakart_homing_missile_destroy =
 	{
-		type = "dota_update_default"
+		type = "dota_src1_3d"
 		vsnd_files = "sounds/weapons/hero/gyrocopter/homing_missile_destroy.vsnd"
 		volume = "1.0"
 		pitch = "1.0"
-		soundlevel = "88.0"
+		soundlevel = "70.0"
 		preload_vsnds = 1
 	}
 	dotakart_homing_missile_enemy =
 	{
-		type = "dota_update_default"
+		type = "dota_src1_3d"
 		vsnd_files = "sounds/weapons/hero/gyrocopter/homing_missile_enemy.vsnd"
 		volume = "1.0"
 		pitch = "1.0"
-		soundlevel = "84.0"
+		soundlevel = "70.0"
 		preload_vsnds = 1
 	}
 	dotakart_homing_missile_target =
 	{
-		type = "dota_update_default"
+		type = "dota_src1_3d"
 		vsnd_files = "sounds/weapons/hero/gyrocopter/homing_missile_target.vsnd"
 		volume = "1.0"
 		pitch = "1.0"
-		soundlevel = "84.0"
+		soundlevel = "70.0"
 		preload_vsnds = 1
 	}
 
@@ -939,4 +939,48 @@
 		preload_vsnds = 1
 	}
 
+
+	// Original DotA Kart soundtrack, played only by the local client.
+	dotakart_music_radiant_overdrive =
+	{
+		type = "dota_src1_2d" // FIX130: 2D music (was dota_update_default = 3D at map center)
+		vsnd_files = "sounds/dotakart/music/radiant_overdrive.vsnd"
+		volume = "0.5"
+		pitch = "1.0"
+		preload_vsnds = 1
+	}
+	dotakart_music_rome_afterburner =
+	{
+		type = "dota_src1_2d" // FIX130: 2D music (was dota_update_default = 3D at map center)
+		vsnd_files = "sounds/dotakart/music/rome_afterburner.vsnd"
+		volume = "0.5"
+		pitch = "1.0"
+		preload_vsnds = 1
+	}
+	dotakart_music_ancient_highway =
+	{
+		type = "dota_src1_2d" // FIX130: 2D music (was dota_update_default = 3D at map center)
+		vsnd_files = "sounds/dotakart/music/ancient_highway.vsnd"
+		volume = "0.5"
+		pitch = "1.0"
+		preload_vsnds = 1
+	}
+
+    dotakart_music_starting_grid =
+    {
+        type = "dota_src1_2d" // FIX130: 2D music (was dota_update_default = 3D at map center)
+        vsnd_files = "sounds/dotakart/music/starting_grid.vsnd"
+        volume = "0.5"
+        pitch = "1.0"
+        preload_vsnds = 1
+    }
+
+    dotakart_music_starlight_circuit =
+    {
+        type = "dota_src1_2d" // FIX130: 2D music (was dota_update_default = 3D at map center)
+        vsnd_files = "sounds/dotakart/music/starlight_circuit.vsnd"
+        volume = "0.5"
+        pitch = "1.0"
+        preload_vsnds = 1
+    }
 }

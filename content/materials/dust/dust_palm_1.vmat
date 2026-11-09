@@ -1,0 +1,9 @@
+Layer0
+{
+ shader "global_lit_simple.vfx"
+ TextureColor "materials/dust/dust_palm_1_color.png"
+ g_vColorTint "[1 1 1 0]"
+ F_NORMAL_MAP 1
+ g_flBumpStrength "0.65"
+ TextureNormal "materials/dust/dust_palm_1_normal.png"
+}

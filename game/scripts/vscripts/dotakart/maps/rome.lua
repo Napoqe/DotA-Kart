@@ -4,6 +4,16 @@ local M = {}
 function M:IsEnabled()
     return GetMapName ~= nil and GetMapName() == "rome"
 end
+-- FIX143: the HUD/bot path uses every TRACK_STRIDE-th dk_track_* on Rome. Data indices
+-- below are the original dk_track_* numbers, so path indices are converted first.
+local TRACK_STRIDE = 2
+function M:GetTrackStride()
+    if not self:IsEnabled() then return 1 end
+    return TRACK_STRIDE
+end
+local function sourceIndex(index)
+    return (math.floor(tonumber(index) or 1) - 1) * TRACK_STRIDE + 1
+end
 local function triangle(x,y,ax,ay,bx,by,cx,cy)
     local a=(x-ax)*(by-ay)-(y-ay)*(bx-ax)
     local b=(x-bx)*(cy-by)-(y-by)*(cx-bx)
@@ -56,6 +66,7 @@ function M:ProjectBranch(pos,hud,best)
     return best
 end
 function M:GetBranchPoint(index)
+    index=sourceIndex(index)
     if index<data.entry_index or index>data.exit_index then return nil end
     -- Main waypoints are evenly spaced, but use the exact main progress exported.
     local distance=data.waypoint_distances[index]
@@ -81,6 +92,7 @@ function M:AssignBots(bots)
 end
 function M:UpdateBotRoute(bot,index,pos)
     if not self:IsEnabled() then return end
+    index=sourceIndex(index)
     if index<data.entry_index-3 or index>data.exit_index+2 then bot.rome_branch_active=nil;return end
     if bot.rome_branch_active==nil then
         if index>data.entry_index+2 then

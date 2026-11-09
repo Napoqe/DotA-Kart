@@ -3,6 +3,33 @@
     "Language" "english"
     "Tokens"
     {
+        "DOTA_KART_MUSIC_MENU" "SOUNDTRACK"
+        "DOTA_KART_MUSIC_NEXT" "Next track"
+        "DOTA_KART_MUSIC_SOURCE_FIRST_RUN" "Choose your soundtrack. DotA Kart replaces the native Dota 2 music; Off silences both. Your choice is saved locally."
+
+
+
+
+
+        "DOTA_KART_MUSIC_ON" "Music: ON"
+        "DOTA_KART_MUSIC_OFF" "Music: OFF"
+        "DOTA_KART_MUSIC_LOADING" "Music: loading..."
+        "DOTA_KART_MUSIC_WELCOME" "WELCOME TO DOTA KART"
+        "DOTA_KART_MUSIC_FIRST_RUN" "Keep the original retro racing soundtrack on? You can turn it off for recordings at any time. This choice is saved on this computer."
+        "DOTA_KART_MUSIC_KEEP" "KEEP MUSIC"
+        "DOTA_KART_MUSIC_DISABLE" "MUSIC OFF"
+
+        "DOTA_KART_SETUP_ADVANCED_BOTS" "ADVANCED BOT SETTINGS"
+        "DOTA_KART_SETUP_BOT_SPEED" "BOT KART SPEED"
+        "DOTA_KART_SETUP_BOT_SPEED_HINT" "80%-140% of normal kart speed."
+        "DOTA_KART_SETUP_BOT_POOL" "BOT ITEM POOL"
+        "DOTA_KART_SETUP_BOT_POOL_0" "Disadvantage"
+        "DOTA_KART_SETUP_BOT_POOL_1" "Slight disadvantage"
+        "DOTA_KART_SETUP_BOT_POOL_2" "Normal"
+        "DOTA_KART_SETUP_BOT_POOL_3" "Advantage"
+        "DOTA_KART_SETUP_BOT_POOL_4" "Strong advantage"
+        "DOTA_KART_SETUP_BOT_POOL_HINT" "Shifts item odds for bots only; normal uses race position."
+
         "DOTA_KART_SETUP_STARTING_GRID" "STARTING GRID"
         "DOTA_KART_SETUP_RANDOM_STARTS_ON" "Random positions: ON"
         "DOTA_KART_SETUP_RANDOM_STARTS_OFF" "Random positions: OFF"
